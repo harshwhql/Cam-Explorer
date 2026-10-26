@@ -1,0 +1,66 @@
+# Fake CP Plus / Dahua recorder for end-to-end testing.
+#   Dahua-style:  rtsp://admin:test1234@<pc-ip>:8554/cam/realmonitor?channel=N&subtype=0|1
+#   Generic:      rtsp://admin:test1234@<pc-ip>:8554/cam1 … /cam4   (cam4 is H.265)
+# Credentials are TEST-ONLY.
+logLevel: info
+
+rtsp: yes
+rtspTransports: [tcp, udp]
+rtspAddress: :8554
+rtspAuthMethods: [digest]
+rtmp: no
+hls: no
+webrtc: no
+srt: no
+api: no
+metrics: no
+playback: no
+
+authMethod: internal
+authInternalUsers:
+  # local ffmpeg publishers inside the container
+  - user: any
+    pass:
+    ips: ['127.0.0.1', '::1']
+    permissions:
+      - action: publish
+  # what the app logs in with
+  - user: admin
+    pass: test1234
+    permissions:
+      - action: read
+
+pathDefaults:
+  runOnInitRestart: yes
+
+paths:
+  # Query string (?channel=&subtype=) is ignored by mediamtx, so every Dahua channel shows this feed.
+  cam/realmonitor:
+    runOnInit: >
+      ffmpeg -hide_banner -loglevel error -re
+      -f lavfi -i testsrc2=size=1280x720:rate=25
+      -f lavfi -i sine=frequency=440:sample_rate=8000
+      -c:v libx264 -preset ultrafast -tune zerolatency -g 50 -pix_fmt yuv420p
+      -c:a pcm_alaw -ar 8000 -ac 1
+      -f rtsp -rtsp_transport tcp rtsp://localhost:8554/$MTX_PATH
+  cam1:
+    runOnInit: >
+      ffmpeg -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=704x576:rate=15
+      -c:v libx264 -preset ultrafast -tune zerolatency -g 30 -pix_fmt yuv420p
+      -f rtsp -rtsp_transport tcp rtsp://localhost:8554/$MTX_PATH
+  cam2:
+    runOnInit: >
+      ffmpeg -hide_banner -loglevel error -re -f lavfi -i smptehdbars=size=1280x720:rate=15
+      -vf "drawbox=x='mod(t*200,iw)':y=300:w=80:h=80:color=red@0.9:t=fill"
+      -c:v libx264 -preset ultrafast -tune zerolatency -g 30 -pix_fmt yuv420p
+      -f rtsp -rtsp_transport tcp rtsp://localhost:8554/$MTX_PATH
+  cam3:
+    runOnInit: >
+      ffmpeg -hide_banner -loglevel error -re -f lavfi -i "life=size=640x360:rate=15:mold=10:ratio=0.1:death_color=#202020:life_color=#2EE6C5,scale=1280:720:flags=neighbor"
+      -c:v libx264 -preset ultrafast -tune zerolatency -g 30 -pix_fmt yuv420p
+      -f rtsp -rtsp_transport tcp rtsp://localhost:8554/$MTX_PATH
+  cam4:
+    runOnInit: >
+      ffmpeg -hide_banner -loglevel error -re -f lavfi -i mandelbrot=size=1280x720:rate=15
+      -c:v libx265 -preset ultrafast -tune zerolatency -x265-params keyint=30:log-level=error -pix_fmt yuv420p
+      -f rtsp -rtsp_transport tcp rtsp://localhost:8554/$MTX_PATH

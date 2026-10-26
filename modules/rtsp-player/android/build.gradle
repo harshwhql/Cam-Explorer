@@ -1,0 +1,21 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.rtspplayer'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.rtspplayer"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+}
+
+dependencies {
+  def media3 = "1.11.1"
+  implementation "androidx.media3:media3-exoplayer:$media3"
+  implementation "androidx.media3:media3-exoplayer-rtsp:$media3"
+}

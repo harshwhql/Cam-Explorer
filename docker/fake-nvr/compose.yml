@@ -1,0 +1,29 @@
+# Fake CP Plus recorder for testing CamExplorer without real cameras.
+#   npm run fake-nvr        → start   |   npm run fake-nvr:stop → stop
+# In the app add a "CP Plus / Dahua" device:
+#   IP = this PC's LAN IP, RTSP port 8554, HTTP port 8080, user admin / password test1234
+name: camx-fake-nvr
+services:
+  rtsp:
+    image: bluenviron/mediamtx:1.21.2-ffmpeg
+    restart: unless-stopped
+    ports:
+      - "8554:8554/tcp"
+      - "8000:8000/udp"
+      - "8001:8001/udp"
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+    mem_limit: 1g
+    cpus: 4
+  http:
+    image: node:24-alpine
+    restart: unless-stopped
+    command: ["node", "/app/dahua-http.mjs"]
+    environment:
+      - NVR_CHANNELS=4
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dahua-http.mjs:/app/dahua-http.mjs:ro
+    mem_limit: 128m
