@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import type { StreamQuality } from '@/core/types';
@@ -8,7 +8,7 @@ import { useAppStore } from '@/storage/store';
 import { Screen } from '@/ui/Screen';
 import { Button, ListRow, SectionTitle, Segmented, Stepper, ToggleRow } from '@/ui/controls';
 import { colors, radius, space, type } from '@/ui/theme';
-import { getDecoderCapabilities, type DecoderInfo } from 'rtsp-player';
+import { canPopUp, getDecoderCapabilities, openOverlaySettings, type DecoderInfo } from 'rtsp-player';
 
 function decoderLine(label: string, d: DecoderInfo | null | undefined): string {
   if (!d) return `${label}: not available`;
@@ -21,6 +21,7 @@ export default function SettingsScreen() {
   const update = useAppStore((s) => s.updateSettings);
   const resetAll = useAppStore((s) => s.resetAll);
   const caps = useMemo(() => getDecoderCapabilities(), []);
+  const [popupAllowed, setPopupAllowed] = useState(canPopUp);
 
   const qualityOptions: { value: StreamQuality; label: string }[] = [
     { value: 'sub', label: 'Sub stream (light)' },
@@ -69,6 +70,28 @@ export default function SettingsScreen() {
         value={settings.motionAware}
         onChange={(v) => update({ motionAware: v })}
       />
+      <ToggleRow
+        label="Motion pop-up"
+        description="While you watch something else, show a camera with motion in a small window"
+        value={settings.motionPopup}
+        onChange={(v) => update({ motionPopup: v })}
+      />
+      {settings.motionPopup && !popupAllowed ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Allow “Display over other apps”</Text>
+          <Text style={styles.cardLine}>
+            Android needs this permission before the app can come forward on motion. On phones and tablets use the
+            button below. TVs hide this setting — run this once from a computer with ADB:
+          </Text>
+          <Text style={styles.code} selectable>
+            adb shell appops set com.camexplorer.app SYSTEM_ALERT_WINDOW allow
+          </Text>
+          <View style={styles.row}>
+            <Button label="Open permission settings" icon="open-in-new" compact onPress={() => openOverlaySettings()} />
+            <Button label="Check again" icon="refresh" compact variant="ghost" onPress={() => setPopupAllowed(canPopUp())} />
+          </View>
+        </View>
+      ) : null}
 
       <SectionTitle>Tour</SectionTitle>
       <ToggleRow
@@ -129,4 +152,6 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.text, fontSize: type.body, fontWeight: '700', marginBottom: space.xs },
   cardLine: { color: colors.textDim, fontSize: type.label, lineHeight: 20 },
   danger: { marginTop: space.xl, alignItems: 'flex-start' },
+  code: { color: colors.teal, fontSize: type.label, fontFamily: 'monospace', marginVertical: space.xs },
+  row: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', marginTop: space.xs },
 });

@@ -34,6 +34,18 @@ jest.mock('rtsp-player', () => {
       model: 'Android TV',
     }),
     discoverOnvif: jest.fn(async () => []),
+    addDigitListener: jest.fn(() => () => undefined),
+    addPipListener: jest.fn(() => () => undefined),
+    isPipSupported: () => false,
+    isInPip: () => false,
+    configurePip: jest.fn(),
+    startMotionPopup: jest.fn(),
+    stopMotionPopup: jest.fn(),
+    canPopUp: () => false,
+    takePendingPopup: () => null,
+    openOverlaySettings: () => false,
+    enterPip: jest.fn(async () => false),
+    addPopupListener: jest.fn(() => () => undefined),
     isNativePlayerAvailable: true,
   };
 });

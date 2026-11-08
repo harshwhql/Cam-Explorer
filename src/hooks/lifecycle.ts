@@ -2,14 +2,31 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
-/** False while the app is in the background / device is on another app or asleep. */
+import { addPipListener, isInPip } from 'rtsp-player';
+
+/**
+ * False while the app is in the background / device is on another app or asleep.
+ * A picture-in-picture window counts as active (Android reports it as background).
+ */
 export function useAppActive(): boolean {
-  const [active, setActive] = useState(AppState.currentState !== 'background');
+  const [active, setActive] = useState(AppState.currentState !== 'background' || isInPip());
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (s) => setActive(s === 'active'));
-    return () => sub.remove();
+    const update = () => setActive(AppState.currentState === 'active' || isInPip());
+    const sub = AppState.addEventListener('change', update);
+    const unPip = addPipListener(update);
+    return () => {
+      sub.remove();
+      unPip();
+    };
   }, []);
   return active;
+}
+
+/** True while the app is shown as a picture-in-picture window. */
+export function usePip(): boolean {
+  const [inPip, setInPip] = useState(isInPip);
+  useEffect(() => addPipListener(setInPip), []);
+  return inPip;
 }
 
 /** False while another screen is on top (e.g. grid while a camera is full screen). */

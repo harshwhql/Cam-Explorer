@@ -11,6 +11,7 @@ import { livePriority, motionOrder, type MotionMap } from '@/core/motion';
 import type { Camera, GridLayout } from '@/core/types';
 import { useAppActive, useNow, useScreenFocused } from '@/hooks/lifecycle';
 import { useCameras } from '@/hooks/useCameras';
+import { useDigitKeys } from '@/hooks/useDigitKeys';
 import { useRemote } from '@/hooks/useRemote';
 import { useDecoderBudget } from '@/hooks/useDecoderBudget';
 import { useMotionStore } from '@/storage/motionStore';
@@ -152,6 +153,11 @@ export default function LiveScreen() {
   const openCamera = useCallback((cam: Camera) => {
     router.push({ pathname: '/camera/[id]', params: { id: cam.id } });
   }, []);
+  // Remote number keys: open camera N full screen.
+  const digits = useDigitKeys(cameras.length, screenFocused && active, (n) => {
+    const cam = cameras[n - 1];
+    if (cam) openCamera(cam);
+  });
   const fixCamera = useCallback((cam: Camera) => {
     router.push({ pathname: '/devices/edit', params: { id: cam.deviceId } });
   }, []);
@@ -186,6 +192,11 @@ export default function LiveScreen() {
           focusIdx.current = -1;
         }}
       />
+      {digits ? (
+        <View style={styles.digits} pointerEvents="none">
+          <Text style={styles.digitsText}>{digits}</Text>
+        </View>
+      ) : null}
       {offPageMotion.length ? (
         <View style={styles.motionBar}>
           <Button
@@ -348,6 +359,17 @@ const styles = StyleSheet.create({
   barRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   sep: { width: 1, height: 22, backgroundColor: colors.border, marginHorizontal: space.sm },
   clock: { color: colors.textDim, fontSize: type.label, fontWeight: '600', marginLeft: space.md, minWidth: 48 },
+  digits: {
+    position: 'absolute',
+    top: '40%',
+    alignSelf: 'center',
+    zIndex: 10,
+    backgroundColor: colors.overlay,
+    borderRadius: 16,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+  },
+  digitsText: { color: colors.text, fontSize: 56, fontWeight: '800', letterSpacing: 4 },
   motionBar: { flexDirection: 'row', marginHorizontal: isTV ? 28 : space.sm, marginBottom: GAP },
   offline: {
     flexDirection: 'row',

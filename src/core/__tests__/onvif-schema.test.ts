@@ -123,3 +123,18 @@ describe('persisted config sanitising', () => {
     for (const id of ids) expect(id).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
   });
 });
+
+describe('feature settings', () => {
+  it('defaults: motion awareness on, background pop-up off (needs a permission)', () => {
+    const s = sanitizeSettings({});
+    expect(s.motionAware).toBe(true);
+    expect(s.motionPopup).toBe(false);
+    expect(s.cameraOrder).toEqual([]);
+    expect(s.favorites).toEqual([]);
+  });
+
+  it('keeps valid values and rejects junk', () => {
+    const s = sanitizeSettings({ motionAware: false, motionPopup: true, favorites: ['d1:2', 7, '<x>'], cameraOrder: 'no' });
+    expect(s).toMatchObject({ motionAware: false, motionPopup: true, favorites: ['d1:2'], cameraOrder: [] });
+  });
+});

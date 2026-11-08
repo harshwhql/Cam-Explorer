@@ -28,7 +28,6 @@ const config: ExpoConfig = {
       'android.permission.CHANGE_WIFI_MULTICAST_STATE',
     ],
     blockedPermissions: [
-      'android.permission.SYSTEM_ALERT_WINDOW',
       'android.permission.READ_EXTERNAL_STORAGE',
       'android.permission.WRITE_EXTERNAL_STORAGE',
       'android.permission.READ_MEDIA_IMAGES',
@@ -88,6 +87,8 @@ const config: ExpoConfig = {
     ],
     './plugins/withReleaseSigning',
     './plugins/withNoDeepLinks',
+    './plugins/withRemoteKeys',
+    './plugins/withPictureInPicture',
   ],
   experiments: {
     typedRoutes: true,

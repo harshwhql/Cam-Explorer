@@ -94,6 +94,17 @@ class RtspPlayerView(context: Context, appContext: AppContext) : ExpoView(contex
     frame.requestLayout()
   }
 
+  fun setZoom(zoom: Float) {
+    frame.zoom = zoom.coerceIn(1f, 8f)
+    frame.requestLayout()
+  }
+
+  fun setPan(x: Float?, y: Float?) {
+    x?.let { frame.panX = it.coerceIn(-1f, 1f) }
+    y?.let { frame.panY = it.coerceIn(-1f, 1f) }
+    frame.requestLayout()
+  }
+
   fun applyProps() {
     val src = pendingSource
     val wantKey = if (src == null || src.uri.isBlank() || pendingPaused) {

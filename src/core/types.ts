@@ -64,6 +64,8 @@ export interface Settings {
   stallTimeoutSec: number;
   /** Highlight cameras with motion and give them the live video decoders first. */
   motionAware: boolean;
+  /** Pop the app up (picture-in-picture) on motion while watching something else. */
+  motionPopup: boolean;
   /** Camera ids in the user's preferred order. */
   cameraOrder: string[];
   /** Camera ids pinned to the top of the grid. */
@@ -80,6 +82,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tourIntervalSec: 15,
   stallTimeoutSec: 8,
   motionAware: true,
+  motionPopup: false,
   cameraOrder: [],
   favorites: [],
 };

@@ -11,6 +11,11 @@ class VideoFrameLayout(context: Context) : FrameLayout(context) {
   var aspect = 0f
   var mode = "contain"
 
+  /** Digital zoom (1 = off) and pan (-1..1: left/top edge .. right/bottom edge). */
+  var zoom = 1f
+  var panX = 0f
+  var panY = 0f
+
   val videoView: View?
     get() = if (childCount > 0) getChildAt(0) else null
 
@@ -46,8 +51,14 @@ class VideoFrameLayout(context: Context) : FrameLayout(context) {
         cw = (h * aspect).roundToInt()
       }
     }
-    val x = (w - cw) / 2
-    val y = (h - ch) / 2
+    // Zoom by laying the video out larger than the frame; works for TextureView and SurfaceView
+    // (the display crops whatever falls outside the screen).
+    cw = (cw * zoom).roundToInt()
+    ch = (ch * zoom).roundToInt()
+    val spareX = maxOf(0, cw - w) / 2f
+    val spareY = maxOf(0, ch - h) / 2f
+    val x = ((w - cw) / 2f - panX * spareX).roundToInt()
+    val y = ((h - ch) / 2f - panY * spareY).roundToInt()
     child.measure(MeasureSpec.makeMeasureSpec(cw, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(ch, MeasureSpec.EXACTLY))
     child.layout(x, y, x + cw, y + ch)
   }

@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { redact } from '@/core/rtsp';
 import { useAppActive } from '@/hooks/lifecycle';
+import { useMotionPopup } from '@/hooks/useMotionPopup';
 import { useMotionWatcher } from '@/hooks/useMotionWatcher';
 import { useAppStore } from '@/storage/store';
 import { Button } from '@/ui/controls';
@@ -27,6 +28,7 @@ export default function RootLayout() {
   const motionAware = useAppStore((s) => s.settings.motionAware);
   const appActive = useAppActive();
   useMotionWatcher(hydrated && appActive && motionAware);
+  useMotionPopup(ready);
 
   useEffect(() => {
     hydrate();

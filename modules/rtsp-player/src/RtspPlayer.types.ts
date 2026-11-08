@@ -37,6 +37,11 @@ export interface RtspPlayerViewProps extends ViewProps {
   surfaceType?: 'texture' | 'surface';
   stallTimeoutMs?: number;
   connectTimeoutMs?: number;
+  /** Digital zoom 1..4 (1 = off). */
+  zoom?: number;
+  /** Pan while zoomed, -1 (left/top) .. 1 (right/bottom). */
+  panX?: number;
+  panY?: number;
   onStatus?: (event: { nativeEvent: PlayerStatusEvent }) => void;
   onVideoSize?: (event: { nativeEvent: VideoSizeEvent }) => void;
 }

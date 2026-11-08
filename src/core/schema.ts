@@ -95,6 +95,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     tourIntervalSec: clamp(raw.tourIntervalSec, 5, 300, DEFAULT_SETTINGS.tourIntervalSec),
     stallTimeoutSec: clamp(raw.stallTimeoutSec, 3, 60, DEFAULT_SETTINGS.stallTimeoutSec),
     motionAware: typeof raw.motionAware === 'boolean' ? raw.motionAware : DEFAULT_SETTINGS.motionAware,
+    motionPopup: typeof raw.motionPopup === 'boolean' ? raw.motionPopup : DEFAULT_SETTINGS.motionPopup,
     cameraOrder: sanitizeIdList(raw.cameraOrder),
     favorites: sanitizeIdList(raw.favorites),
   };
