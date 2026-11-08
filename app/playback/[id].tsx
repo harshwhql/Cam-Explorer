@@ -26,7 +26,7 @@ import { cachedPassword } from '@/storage/secrets';
 import { Screen } from '@/ui/Screen';
 import { Banner, Button } from '@/ui/controls';
 import { colors, isTV, radius, space, type } from '@/ui/theme';
-import { RtspPlayerView, type PlayerStatusEvent } from 'rtsp-player';
+import { PlayerView, isCompatEngineAvailable, type PlayerStatusEvent } from 'rtsp-player';
 
 /** Resume playback this long after the last scrub key press (avoids a reconnect per press). */
 const SCRUB_RESUME_MS = 800;
@@ -201,7 +201,9 @@ export default function PlaybackScreen() {
       </View>
 
       <View style={styles.player}>
-        <RtspPlayerView
+        <PlayerView
+          engine={nvr.engine}
+          compatAvailable={isCompatEngineAvailable}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
           focusable={false}

@@ -15,7 +15,8 @@
     "fake-nvr:stop": "docker compose -f docker/fake-nvr/compose.yml down",
     "build:apk": "node scripts/build-apk.mjs release",
     "build:apk:debug": "node scripts/build-apk.mjs debug arm64-v8a",
-    "install:device": "node scripts/install-device.mjs"
+    "install:device": "node scripts/install-device.mjs",
+    "build:apk:compat": "node scripts/build-apk.mjs release --compat"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

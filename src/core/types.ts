@@ -15,6 +15,8 @@ interface DeviceBase {
   username: string;
   transport: Transport;
   createdAt: number;
+  /** Video engine: standard (Media3) or compat (libVLC, only in compat builds). */
+  engine?: 'standard' | 'compat';
 }
 
 /** CP Plus / Dahua NVR, DVR or standalone camera (Dahua RTSP + HTTP API). */

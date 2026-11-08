@@ -31,6 +31,9 @@ npm run check        # typecheck, lint, tests
 npm run build:apk    # → dist/camexplorer-<version>-release.apk (TVs, tablets and phones)
 ```
 
+For cameras whose streams the standard player can't handle, `npm run build:apk:compat` builds a larger
+APK that also includes a libVLC compatibility engine; choose it per recorder under **Devices → Video engine**.
+
 The first build creates a local signing key in `.signing/`. Keep it safe: updates must be signed with the same key.
 
 ## Install

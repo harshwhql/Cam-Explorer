@@ -6,11 +6,20 @@ plugins {
 group = 'expo.modules.rtspplayer'
 version = '0.1.0'
 
+// Optional libVLC "compatibility" engine for streams the standard player can't handle.
+// Off by default (adds ~15-30 MB per CPU type); build with -Pcamx.vlc=true to include it.
+def withVlc = (findProperty('camx.vlc') ?: rootProject.findProperty('camx.vlc')) == 'true'
+
 android {
   namespace "expo.modules.rtspplayer"
   defaultConfig {
     versionCode 1
     versionName "0.1.0"
+  }
+  sourceSets {
+    main {
+      java.srcDirs += withVlc ? 'src/vlc/java' : 'src/novlc/java'
+    }
   }
 }
 
@@ -18,4 +27,7 @@ dependencies {
   def media3 = "1.11.1"
   implementation "androidx.media3:media3-exoplayer:$media3"
   implementation "androidx.media3:media3-exoplayer-rtsp:$media3"
+  if (withVlc) {
+    implementation "org.videolan.android:libvlc-all:3.7.7"
+  }
 }

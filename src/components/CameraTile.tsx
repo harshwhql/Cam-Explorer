@@ -7,7 +7,7 @@ import { useStream } from '@/hooks/useStream';
 import { Icon } from '@/ui/controls';
 import { Focusable } from '@/ui/Focusable';
 import { colors, fill, radius, type } from '@/ui/theme';
-import { RtspPlayerView } from 'rtsp-player';
+import { PlayerView, isCompatEngineAvailable } from 'rtsp-player';
 import { SnapshotPill, SnapshotView } from './SnapshotView';
 import { LivePill, StreamOverlay } from './StreamStatus';
 
@@ -80,7 +80,9 @@ function CameraTileImpl({
         <>
           {live ? (
             <>
-              <RtspPlayerView
+              <PlayerView
+                engine={device?.engine}
+                compatAvailable={isCompatEngineAvailable}
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
                 focusable={false}

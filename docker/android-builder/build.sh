@@ -77,10 +77,12 @@ EOF
 cd android
 TASK="assembleRelease"; [ "$VARIANT" = "debug" ] && TASK="assembleDebug"
 echo ">> ./gradlew $TASK ($ABIS)"
-./gradlew --no-daemon "$TASK" -PreactNativeArchitectures="$ABIS"
+VLC_FLAG="-Pcamx.vlc=false"; SUFFIX=""
+if [ "${CAMX_VLC:-0}" = "1" ]; then VLC_FLAG="-Pcamx.vlc=true"; SUFFIX="-compat"; echo ">> Including the libVLC compatibility engine"; fi
+./gradlew --no-daemon "$TASK" -PreactNativeArchitectures="$ABIS" "$VLC_FLAG"
 
 APK="app/build/outputs/apk/${VARIANT}/app-${VARIANT}.apk"
 VERSION="$(node -p "require('/build/package.json').version")"
-DEST="/out/camexplorer-${VERSION}-${VARIANT}.apk"
+DEST="/out/camexplorer-${VERSION}-${VARIANT}${SUFFIX}.apk"
 cp "$APK" "$DEST"
 echo ">> Built $DEST ($(du -h "$DEST" | cut -f1))"

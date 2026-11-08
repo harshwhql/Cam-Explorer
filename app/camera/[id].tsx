@@ -20,7 +20,7 @@ import { useAppStore } from '@/storage/store';
 import { useUiStore } from '@/storage/uiStore';
 import { Button, Icon } from '@/ui/controls';
 import { colors, isTV, space, tvSafe, type } from '@/ui/theme';
-import { RtspPlayerView, configurePip, enterPip } from 'rtsp-player';
+import { PlayerView, isCompatEngineAvailable, configurePip, enterPip } from 'rtsp-player';
 
 const OVERLAY_MS = 4000;
 const DECODER_HANDOFF_MS = 250;
@@ -303,7 +303,9 @@ export default function CameraScreen() {
         accessibilityLabel={`${cam.name} live`}
         accessibilityHint={isTV ? 'Left and right switch camera, OK toggles sound' : 'Tap to show controls'}
       >
-        <RtspPlayerView
+        <PlayerView
+          engine={device?.engine}
+          compatAvailable={isCompatEngineAvailable}
           key={cam.id}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"

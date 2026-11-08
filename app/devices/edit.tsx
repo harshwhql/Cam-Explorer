@@ -22,7 +22,7 @@ import { Screen } from '@/ui/Screen';
 import { Banner, Button, SectionTitle, Segmented, Stepper, TextField, ToggleRow } from '@/ui/controls';
 import { colors, radius, space, type } from '@/ui/theme';
 import { PinGate } from '@/components/PinGate';
-import { RtspPlayerView } from 'rtsp-player';
+import { PlayerView, isCompatEngineAvailable } from 'rtsp-player';
 
 type Kind = Device['kind'];
 type Detect = { state: 'idle' | 'working' | 'ok' | 'error'; message?: string };
@@ -60,6 +60,7 @@ function EditDeviceScreen() {
   const [password, setPassword] = useState('');
   const [passwordEdited, setPasswordEdited] = useState(isNew);
   const [transport, setTransport] = useState<Transport>(existing?.transport ?? 'tcp');
+  const [engine, setEngine] = useState<'standard' | 'compat'>(existing?.engine ?? 'standard');
   const [channels, setChannels] = useState<ChannelConfig[]>(existing?.kind === 'dahua' ? existing.channels : []);
   const [manualCount, setManualCount] = useState(existing?.kind === 'dahua' ? existing.channels.length : 4);
   const [mainUrl, setMainUrl] = useState(existing?.kind === 'rtsp' ? existing.mainUrl : params.host ? `rtsp://${params.host}:554/` : '');
@@ -143,6 +144,7 @@ function EditDeviceScreen() {
       username,
       transport,
       createdAt: existing?.createdAt ?? Date.now(),
+      ...(engine === 'compat' ? { engine } : {}),
     };
     let device: Device | null = null;
     if (kind === 'dahua') {
@@ -371,12 +373,26 @@ function EditDeviceScreen() {
         ]}
       />
 
+      {isCompatEngineAvailable ? (
+        <Segmented<'standard' | 'compat'>
+          label="Video engine"
+          value={engine}
+          onChange={setEngine}
+          options={[
+            { value: 'standard', label: 'Standard (recommended)' },
+            { value: 'compat', label: 'Compatibility (VLC)' },
+          ]}
+        />
+      ) : null}
+
       <View style={styles.row}>
         <Button label={preview ? 'Stop test' : 'Test live stream'} icon="play-circle-outline" onPress={() => setPreview((p) => !p)} />
       </View>
       {preview ? (
         <View style={styles.preview}>
-          <RtspPlayerView
+          <PlayerView
+            engine={engine}
+            compatAvailable={isCompatEngineAvailable}
             style={StyleSheet.absoluteFill}
             source={stream.nativeSource}
             muted

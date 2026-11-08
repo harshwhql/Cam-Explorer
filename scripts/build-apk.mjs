@@ -8,8 +8,12 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const variant = process.argv[2] ?? 'release';
-const abis = process.argv[3] ?? 'armeabi-v7a,arm64-v8a,x86_64';
+const args = process.argv.slice(2);
+// --compat: include the libVLC compatibility engine (bigger APK).
+const compat = args.includes('--compat');
+const positional = args.filter((a) => !a.startsWith('--'));
+const variant = positional[0] ?? 'release';
+const abis = positional[1] ?? 'armeabi-v7a,arm64-v8a,x86_64';
 if (!['release', 'debug'].includes(variant)) {
   console.error('variant must be release or debug');
   process.exit(2);
@@ -31,6 +35,7 @@ const toDocker = (p) => p.replace(/\\/g, '/');
 run(
   [
     'run', '--rm',
+    '-e', `CAMX_VLC=${compat ? '1' : '0'}`,
     // Bound CPU (nproc → ninja -j) and memory so a native build can't freeze the Docker VM.
     '--cpuset-cpus', process.env.CAMX_CPUS ?? '0-5',
     '--memory', process.env.CAMX_MEMORY ?? '6g',

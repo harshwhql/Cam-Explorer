@@ -4,6 +4,7 @@ import { requireOptionalNativeModule } from 'expo';
 import type { DecoderCapabilities, OnvifProbeMatch } from './src/RtspPlayer.types';
 
 export { default as RtspPlayerView } from './src/RtspPlayerView';
+export { PlayerView, type PlayerEngine } from './src/PlayerView';
 export * from './src/RtspPlayer.types';
 
 interface RtspPlayerNativeModule {
@@ -143,3 +144,15 @@ export function addPopupListener(listener: (cameraId: string) => void): () => vo
   const sub = native.addListener('onPopup', (e) => listener(e.cameraId));
   return () => sub.remove();
 }
+
+const vlcModule =
+  Platform.OS === 'android' ? requireOptionalNativeModule<{ isAvailable(): boolean }>('RtspPlayerVlc') : null;
+
+/** True when this build includes the libVLC compatibility engine (npm run build:apk:compat). */
+export const isCompatEngineAvailable: boolean = (() => {
+  try {
+    return vlcModule?.isAvailable() ?? false;
+  } catch {
+    return false;
+  }
+})();

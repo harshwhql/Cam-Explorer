@@ -1,6 +1,6 @@
 {
   "platforms": ["android"],
   "android": {
-    "modules": ["expo.modules.rtspplayer.RtspPlayerModule"]
+    "modules": ["expo.modules.rtspplayer.RtspPlayerModule", "expo.modules.rtspplayer.VlcPlayerModule"]
   }
 }

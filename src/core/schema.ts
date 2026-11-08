@@ -41,6 +41,7 @@ export function sanitizeDevice(raw: unknown): Device | null {
     username: str(raw.username),
     transport: transport(raw.transport),
     createdAt: int(raw.createdAt, 0),
+    ...(raw.engine === 'compat' ? { engine: 'compat' as const } : {}),
   };
   if (base.username && validateUsername(base.username)) return null;
 

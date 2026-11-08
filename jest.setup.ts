@@ -47,6 +47,10 @@ jest.mock('rtsp-player', () => {
     enterPip: jest.fn(async () => false),
     addPopupListener: jest.fn(() => () => undefined),
     isNativePlayerAvailable: true,
+    isCompatEngineAvailable: false,
+    // Delegates to the RtspPlayerView mock so tests can inspect the props it received.
+    PlayerView: ({ engine: _e, compatAvailable: _c, ...props }: Record<string, unknown>) =>
+      React.createElement(RtspPlayerView, props),
   };
 });
 
