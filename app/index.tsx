@@ -227,6 +227,7 @@ export default function LiveScreen() {
                     onFix={fixCamera}
                     mode={liveIds.has(cam.id) ? 'live' : 'snapshot'}
                     motion={!!motion[cam.id]}
+                    favorite={settings.favorites.includes(cam.id)}
                     snapshotIntervalMs={snapshotEvery}
                     onFocusTile={() => {
                       focusIdx.current = idx;

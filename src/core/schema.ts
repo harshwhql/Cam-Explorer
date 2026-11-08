@@ -1,5 +1,6 @@
 // Defensive (de)serialisation of persisted config. Anything malformed is dropped rather
 // than crashing the app at boot — the app must always come up.
+import { sanitizeIdList } from './arrange';
 import { GRID_LAYOUTS } from './layout';
 import { DEFAULT_SETTINGS } from './types';
 import type { ChannelConfig, Device, GridLayout, Settings, StreamQuality, Transport } from './types';
@@ -94,6 +95,8 @@ export function sanitizeSettings(raw: unknown): Settings {
     tourIntervalSec: clamp(raw.tourIntervalSec, 5, 300, DEFAULT_SETTINGS.tourIntervalSec),
     stallTimeoutSec: clamp(raw.stallTimeoutSec, 3, 60, DEFAULT_SETTINGS.stallTimeoutSec),
     motionAware: typeof raw.motionAware === 'boolean' ? raw.motionAware : DEFAULT_SETTINGS.motionAware,
+    cameraOrder: sanitizeIdList(raw.cameraOrder),
+    favorites: sanitizeIdList(raw.favorites),
   };
 }
 

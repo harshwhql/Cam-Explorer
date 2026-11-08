@@ -45,6 +45,7 @@ export default function DevicesScreen() {
         />
         <Button label="Add CP Plus / Dahua" icon="plus" onPress={() => router.push('/devices/edit?kind=dahua')} />
         <Button label="Add RTSP URL" icon="link-variant" onPress={() => router.push('/devices/edit?kind=rtsp')} />
+        <Button label="Arrange cameras" icon="sort" variant="ghost" onPress={() => router.push('/cameras')} />
       </View>
 
       {exposed.length > 0 ? (

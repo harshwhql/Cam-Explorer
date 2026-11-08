@@ -32,6 +32,7 @@ export interface CameraTileProps {
   snapshotIntervalMs?: number;
   /** Recorder reports motion on this camera right now. */
   motion?: boolean;
+  favorite?: boolean;
 }
 
 function CameraTileImpl({
@@ -49,6 +50,7 @@ function CameraTileImpl({
   mode = 'live',
   snapshotIntervalMs,
   motion = false,
+  favorite = false,
 }: CameraTileProps) {
   const live = mode === 'live';
   const source = live ? sourceForCamera(device, camera, quality) : null;
@@ -102,6 +104,7 @@ function CameraTileImpl({
           <View style={styles.topRow} pointerEvents="none">
             <View style={styles.topLeft}>
               <Text style={styles.number}>{number}</Text>
+              {favorite ? <Icon name="star" size={13} color={colors.warn} /> : null}
               {motion ? (
                 <View style={styles.motionPill}>
                   <Icon name="motion-sensor" size={11} color={colors.bg} />

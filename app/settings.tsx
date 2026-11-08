@@ -6,7 +6,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import type { StreamQuality } from '@/core/types';
 import { useAppStore } from '@/storage/store';
 import { Screen } from '@/ui/Screen';
-import { Button, SectionTitle, Segmented, Stepper, ToggleRow } from '@/ui/controls';
+import { Button, ListRow, SectionTitle, Segmented, Stepper, ToggleRow } from '@/ui/controls';
 import { colors, radius, space, type } from '@/ui/theme';
 import { getDecoderCapabilities, type DecoderInfo } from 'rtsp-player';
 
@@ -59,6 +59,8 @@ export default function SettingsScreen() {
         suffix="s"
         onChange={(v) => update({ stallTimeoutSec: v })}
       />
+
+      <ListRow title="Arrange cameras" subtitle="Favourites and order in the grid" icon="sort" onPress={() => router.push('/cameras')} />
 
       <SectionTitle>Motion</SectionTitle>
       <ToggleRow

@@ -64,6 +64,10 @@ export interface Settings {
   stallTimeoutSec: number;
   /** Highlight cameras with motion and give them the live video decoders first. */
   motionAware: boolean;
+  /** Camera ids in the user's preferred order. */
+  cameraOrder: string[];
+  /** Camera ids pinned to the top of the grid. */
+  favorites: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -76,4 +80,6 @@ export const DEFAULT_SETTINGS: Settings = {
   tourIntervalSec: 15,
   stallTimeoutSec: 8,
   motionAware: true,
+  cameraOrder: [],
+  favorites: [],
 };
