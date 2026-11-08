@@ -2,6 +2,7 @@
 // channel count and channel names so the user doesn't have to type them (painful with a TV remote).
 import { buildDigestAuthorization, offersBasicOnly, parseWwwAuthenticate, randomCnonce } from './digest';
 import { formatHostPort, redact } from './rtsp';
+import { formatRecorderTime, parseRecorderTime, type Recording } from './timeline';
 
 export type DahuaErrorCode = 'auth' | 'insecure_auth' | 'unreachable' | 'timeout' | 'http' | 'not_dahua';
 
@@ -28,6 +29,33 @@ export interface PtzCaps {
 export const NO_PTZ: PtzCaps = { pan: false, tilt: false, zoom: false, presets: false };
 
 export const hasPtz = (c: PtzCaps) => c.pan || c.tilt || c.zoom;
+
+const PAGE_SIZE = 100;
+export const MAX_RECORDINGS = 2000;
+
+/** `items[N].StartTime=…`, `.EndTime`, `.Flags[k]`, `.Events[k]` → recordings (bad items dropped). */
+export function parseRecordingItems(text: string): Recording[] {
+  const items = new Map<number, { start?: string; end?: string; flags: string[]; events: string[] }>();
+  for (const [key, value] of Object.entries(parseKeyValue(text))) {
+    const m = /^items\[(\d+)\]\.(StartTime|EndTime|Flags\[\d+\]|Events\[\d+\])$/.exec(key);
+    if (!m) continue;
+    const idx = Number(m[1]);
+    const it = items.get(idx) ?? { flags: [], events: [] };
+    if (m[2] === 'StartTime') it.start = value;
+    else if (m[2] === 'EndTime') it.end = value;
+    else if (m[2]!.startsWith('Flags')) it.flags.push(value);
+    else it.events.push(value);
+    items.set(idx, it);
+  }
+  const out: Recording[] = [];
+  for (const [, it] of [...items.entries()].sort((a, b) => a[0] - b[0])) {
+    const start = parseRecorderTime(it.start);
+    const end = parseRecorderTime(it.end);
+    if (Number.isNaN(start) || Number.isNaN(end) || end <= start) continue;
+    out.push({ start, end, event: it.flags.some((f) => /event|motion/i.test(f)), events: it.events });
+  }
+  return out;
+}
 
 function assertChannel(channel: number): void {
   if (!Number.isInteger(channel) || channel < 1 || channel > 256) throw new DahuaError('http', 'Invalid channel');
@@ -178,6 +206,42 @@ export class DahuaClient {
     assertChannel(channel);
     if (!Number.isInteger(preset) || preset < 1 || preset > 255) throw new DahuaError('http', 'Invalid preset');
     await this.get(`/cgi-bin/ptz.cgi?action=start&channel=${channel}&code=GotoPreset&arg1=0&arg2=${preset}&arg3=0`);
+  }
+
+  /**
+   * Recordings of a channel between two local times (the recorder's mediaFileFind API:
+   * create → findFile → findNextFile… → close → destroy). Capped at MAX_RECORDINGS.
+   */
+  async findRecordings(channel: number, from: number, to: number): Promise<Recording[]> {
+    assertChannel(channel);
+    if (!(to > from)) return [];
+    const created = parseKeyValue(await this.get('/cgi-bin/mediaFileFind.cgi?action=factory.create'));
+    const object = created.result;
+    if (!object || !/^\d+$/.test(object)) throw new DahuaError('http', 'Recorder search is not available');
+    const q = (t: number) => encodeURIComponent(formatRecorderTime(t));
+    const out: Recording[] = [];
+    try {
+      const ok = await this.get(
+        `/cgi-bin/mediaFileFind.cgi?action=findFile&object=${object}&condition.Channel=${channel}` +
+          `&condition.StartTime=${q(from)}&condition.EndTime=${q(to)}&condition.Types[0]=dav`,
+      ).catch((e: unknown) => {
+        // No recordings in range: firmware answers 400 "Error".
+        if (e instanceof DahuaError && e.code === 'http') return '';
+        throw e;
+      });
+      if (!ok) return [];
+      while (out.length < MAX_RECORDINGS) {
+        const page = parseRecordingItems(
+          await this.get(`/cgi-bin/mediaFileFind.cgi?action=findNextFile&object=${object}&count=${PAGE_SIZE}`),
+        );
+        out.push(...page);
+        if (page.length < PAGE_SIZE) break;
+      }
+    } finally {
+      await this.get(`/cgi-bin/mediaFileFind.cgi?action=close&object=${object}`).catch(() => undefined);
+      await this.get(`/cgi-bin/mediaFileFind.cgi?action=destroy&object=${object}`).catch(() => undefined);
+    }
+    return out.slice(0, MAX_RECORDINGS);
   }
 
   /** Current JPEG frame of a channel (1-based) — no video decoder needed to show it. */

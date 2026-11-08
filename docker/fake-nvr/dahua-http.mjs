@@ -13,6 +13,31 @@ const MAX_FAILS = 5;
 const FAKE_JPEG = readFileSync(new URL('./snapshot.jpg', import.meta.url));
 
 const md5 = (s) => createHash('md5').update(s).digest('hex');
+
+// ---- fake recordings ----
+let searchSeq = 1000;
+const searches = new Map();
+const pad = (n) => String(n).padStart(2, '0');
+const fmtTime = (t) => {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
+const parseTime = (s) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(s ?? '');
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() : 0;
+};
+function fakeRecordings(from, to) {
+  const items = [];
+  const HOUR = 3_600_000;
+  for (let t = Math.floor(from / HOUR) * HOUR; t < to; t += HOUR) {
+    items.push({ start: Math.max(t, from), end: Math.min(t + HOUR, to), event: false });
+    for (const off of [0, 30 * 60_000]) {
+      const s = t + off;
+      if (s >= from && s + 10 * 60_000 <= to) items.push({ start: s, end: s + 10 * 60_000, event: true });
+    }
+  }
+  return items.sort((a, b) => a.start - b.start);
+}
 const nonces = new Set();
 let failures = 0;
 let lockedUntil = 0;
@@ -80,6 +105,34 @@ createServer((req, res) => {
     if (moving) res.writeHead(200, { 'Content-Type': 'text/plain' }).end('channels[0]=1\r\n');
     else if (code !== 'VideoLoss') res.writeHead(400).end('Error\r\nBad Request!\r\n');
     if (moving || code !== 'VideoLoss') return;
+  }
+  // Recording search: continuous footage from midnight in 1 h files, plus a 10 min motion
+  // clip every 30 min — enough to exercise the playback timeline.
+  if (req.url?.startsWith('/cgi-bin/mediaFileFind.cgi?')) {
+    const u = new URL(req.url, 'http://x');
+    const action = u.searchParams.get('action');
+    if (action === 'factory.create') return void res.writeHead(200).end(`result=${++searchSeq}\r\n`);
+    if (action === 'findFile') {
+      const from = parseTime(u.searchParams.get('condition.StartTime'));
+      const to = parseTime(u.searchParams.get('condition.EndTime')); // container runs in UTC: don't clamp to "now"
+      searches.set(u.searchParams.get('object'), { items: fakeRecordings(from, to), pos: 0 });
+      return void res.writeHead(200).end('OK\r\n');
+    }
+    if (action === 'findNextFile') {
+      const s = searches.get(u.searchParams.get('object'));
+      const count = Number(u.searchParams.get('count') ?? 100);
+      const page = s ? s.items.slice(s.pos, s.pos + count) : [];
+      if (s) s.pos += page.length;
+      const body = [`found=${page.length}`];
+      page.forEach((it, i) => {
+        body.push(`items[${i}].Channel=0`, `items[${i}].StartTime=${fmtTime(it.start)}`, `items[${i}].EndTime=${fmtTime(it.end)}`);
+        body.push(`items[${i}].Flags[0]=${it.event ? 'Event' : 'Timing'}`);
+        if (it.event) body.push(`items[${i}].Events[0]=VideoMotion`);
+      });
+      return void res.writeHead(200).end(body.join('\r\n') + '\r\n');
+    }
+    if (action === 'destroy') searches.delete(u.searchParams.get('object'));
+    return void res.writeHead(200).end('OK\r\n');
   }
   if (req.url?.startsWith('/cgi-bin/ptz.cgi?')) {
     const ch = new URL(req.url, 'http://x').searchParams.get('channel');

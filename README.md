@@ -15,6 +15,7 @@ Works with **CP Plus / Dahua** recorders and any **RTSP** or **ONVIF** camera on
   on motion while you watch something else
 - Favourites, custom camera order, digital zoom, number-key camera jump, picture-in-picture
 - Optional PIN lock for settings or the whole app, with brute-force protection
+- Recording playback (CP Plus / Dahua): 24 h timeline with motion markers, jump between events
 - Pan/tilt/zoom control for PTZ cameras (hold to move, with remote or touch)
 - Finds recorders on the network (ONVIF) and auto-detects channels and camera names
 - Private by design: LAN only, no cloud, no account, no analytics; passwords stored encrypted
@@ -47,7 +48,7 @@ npm run fake-nvr     # fake CP Plus/Dahua recorder in Docker
 ```
 
 Add a *CP Plus / Dahua* device with your computer's IP, RTSP port `8554`, HTTP port `8080`,
-user `admin`, password `test1234`.
+user `admin`, password `test1234`. It also simulates motion (channel 2), PTZ (channel 1) and recordings for playback.
 
 ## Viewing away from home
 
@@ -65,6 +66,7 @@ The app shows the full guide under **Settings → Viewing away from home**.
 | Full screen | Sound button | OK | Sound on/off |
 | Full screen | Pinch / drag, zoom buttons | ▲ to zoom, arrows to move, OK zoom more | Digital zoom |
 | Anywhere | — | Number keys | Jump to camera N |
+| Full screen | Recordings button | ▼ → Recordings | Timeline playback (◀ ▶ 1 min, CH± 10 min, ⏪ ⏩ events) |
 | Full screen (PTZ camera) | PTZ button, hold arrows | ▼, then hold arrows / CH± | Move / zoom the camera |
 | Full screen | Home | Home | Keep watching in a picture-in-picture window |
 | Anywhere | Back | Back | Go back |

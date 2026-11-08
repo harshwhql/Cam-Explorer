@@ -1,5 +1,6 @@
 import type { Camera, DahuaDevice, Device, RtspDevice, StreamQuality, StreamSource } from './types';
 import { isIPv6, stripBrackets, validateHost, validatePort } from './validation';
+import { formatPlaybackTime } from './timeline';
 
 export function formatHostPort(host: string, port: number): string {
   const h = stripBrackets(host.trim());
@@ -15,6 +16,14 @@ export function buildDahuaUrl(host: string, port: number, channel: number, quali
   if (!Number.isInteger(channel) || channel < 1) throw new Error('Invalid channel');
   const subtype = quality === 'main' ? 0 : 1;
   return `rtsp://${formatHostPort(host, port)}/cam/realmonitor?channel=${channel}&subtype=${subtype}`;
+}
+
+/** CP Plus / Dahua recorded-video URL for a local time range. */
+export function buildDahuaPlaybackUrl(host: string, port: number, channel: number, from: number, to: number): string {
+  const live = buildDahuaUrl(host, port, channel, 'main'); // validates host/port/channel
+  if (!(to > from)) throw new Error('Invalid time range');
+  const base = live.slice(0, live.indexOf('/cam/realmonitor'));
+  return `${base}/cam/playback?channel=${channel}&starttime=${formatPlaybackTime(from)}&endtime=${formatPlaybackTime(to)}`;
 }
 
 export interface ParsedRtspUrl {

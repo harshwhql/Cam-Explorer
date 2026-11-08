@@ -50,6 +50,7 @@ interface FakeOptions {
 
 function startFakeNvr(opts: FakeOptions = {}) {
   const nonces = new Set<string>();
+  let mediaPages = 0;
   const log: { url: string; auth?: string }[] = [];
   const routes: Record<string, string> = {
     '/cgi-bin/magicBox.cgi?action=getDeviceType': 'type=CP-UVR-0801E1-CS\r\n',
@@ -88,6 +89,25 @@ function startFakeNvr(opts: FakeOptions = {}) {
       return;
     }
     const body = routes[req.url ?? ''];
+    if (req.url?.startsWith('/cgi-bin/mediaFileFind.cgi?')) {
+      const u = new URL(req.url, 'http://x');
+      const action = u.searchParams.get('action');
+      if (action === 'factory.create') return void res.writeHead(200).end('result=4711\r\n');
+      if (action === 'findFile') {
+        const ch = u.searchParams.get('condition.Channel');
+        return void (ch === '1' ? res.writeHead(200).end('OK\r\n') : res.writeHead(400).end('Error\r\n'));
+      }
+      if (action === 'findNextFile') {
+        mediaPages += 1;
+        if (mediaPages > 1) return void res.writeHead(200).end('found=0\r\n');
+        return void res.writeHead(200).end(
+          'found=2\r\nitems[0].StartTime=2026-11-09 10:00:00\r\nitems[0].EndTime=2026-11-09 11:00:00\r\n' +
+            'items[1].StartTime=2026-11-09 11:00:00\r\nitems[1].EndTime=2026-11-09 11:05:00\r\nitems[1].Flags[0]=Event\r\n' +
+            'items[1].Events[0]=VideoMotion\r\n',
+        );
+      }
+      return void res.writeHead(200).end('OK\r\n'); // close / destroy
+    }
     if (req.url?.startsWith('/cgi-bin/ptz.cgi?')) {
       const ch = new URL(req.url, 'http://x').searchParams.get('channel');
       if (ch !== '1') return void res.writeHead(400).end('Error\r\nBad Request!\r\n');
@@ -231,6 +251,38 @@ describe('snapshots', () => {
   it('rejects invalid channels without a request', async () => {
     const client = new DahuaClient({ host: '127.0.0.1', port: 1, username: USER, password: PASS, fetchImpl: realFetch });
     await expect(client.snapshot(0)).rejects.toMatchObject({ code: 'http' });
+  });
+});
+
+describe('recording search', () => {
+  it('runs create → findFile → findNextFile → close → destroy and parses the files', async () => {
+    const nvr = await startFakeNvr();
+    try {
+      const client = new DahuaClient({ host: '127.0.0.1', port: nvr.port, username: USER, password: PASS, fetchImpl: realFetch });
+      const from = new Date(2026, 10, 9).getTime();
+      const recs = await client.findRecordings(1, from, from + 86_399_000);
+      expect(recs).toHaveLength(2);
+      expect(recs[1]).toMatchObject({ event: true, events: ['VideoMotion'] });
+      const actions = nvr.log
+        .filter((r) => r.auth && r.url.startsWith('/cgi-bin/mediaFileFind.cgi'))
+        .map((r) => new URL(r.url, 'http://x').searchParams.get('action'));
+      expect(actions).toEqual(['factory.create', 'findFile', 'findNextFile', 'close', 'destroy']);
+      const find = nvr.log.find((r) => r.auth && r.url.includes('action=findFile'))!.url;
+      expect(find).toContain('condition.StartTime=2026-11-09%2000%3A00%3A00');
+    } finally {
+      await nvr.close();
+    }
+  });
+
+  it('no recordings: empty result and the search object is still released', async () => {
+    const nvr = await startFakeNvr();
+    try {
+      const client = new DahuaClient({ host: '127.0.0.1', port: nvr.port, username: USER, password: PASS, fetchImpl: realFetch });
+      expect(await client.findRecordings(2, 0, 1000)).toEqual([]);
+      expect(nvr.log.some((r) => r.auth && r.url.includes('action=destroy'))).toBe(true);
+    } finally {
+      await nvr.close();
+    }
   });
 });
 

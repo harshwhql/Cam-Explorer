@@ -62,6 +62,11 @@ export default function CameraScreen() {
   const { state, nativeSource, onStatus, retryNow } = useStream(source, appActive);
   const ptz = usePtz(device, cam?.channel);
   const [ptzMode, setPtzMode] = useState(false);
+  const [actionBar, setActionBar] = useState(false);
+  const actionBarRef = useRef(false);
+  useEffect(() => {
+    actionBarRef.current = actionBar;
+  }, [actionBar]);
   const ptzModeRef = useRef(false);
   useEffect(() => {
     ptzModeRef.current = ptzMode;
@@ -119,6 +124,12 @@ export default function CameraScreen() {
     poke();
   });
 
+  const canPlayback = device?.kind === 'dahua';
+  const openRecordings = useCallback(() => {
+    setActionBar(false);
+    if (cam) router.push({ pathname: '/playback/[id]', params: { id: cam.id } });
+  }, [cam]);
+
   const exitPtz = useCallback(() => {
     ptz.stop();
     setPtzMode(false);
@@ -139,6 +150,10 @@ export default function CameraScreen() {
   // Back while zoomed steps the zoom out instead of leaving the camera.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (actionBarRef.current) {
+        setActionBar(false);
+        return true;
+      }
       if (ptzModeRef.current) {
         exitPtz();
         return true;
@@ -198,6 +213,10 @@ export default function CameraScreen() {
   });
 
   useRemote((evt) => {
+    if (actionBarRef.current) {
+      if (evt.eventType === 'up') setActionBar(false);
+      return;
+    }
     if (ptzModeRef.current) {
       if (evt.eventType === 'select' || evt.eventType === 'menu') exitPtz();
       poke();
@@ -234,7 +253,7 @@ export default function CameraScreen() {
         changeZoom(stepZoom(zoomRef.current, 1));
         break;
       case 'down':
-        if (ptz.supported && zoomRef.current.zoom <= 1) setPtzMode(true);
+        if (zoomRef.current.zoom <= 1 && (canPlayback || ptz.supported)) setActionBar(true);
         poke();
         break;
       case 'info':
@@ -256,7 +275,7 @@ export default function CameraScreen() {
   }
 
   const onPress = () => {
-    if (ptzMode) return;
+    if (ptzMode || actionBar) return;
     if (state.phase === 'failed' && state.errorCode !== 'auth') {
       retryNow();
       poke();
@@ -305,6 +324,24 @@ export default function CameraScreen() {
         <StreamOverlay state={state} />
       </Pressable>
       </View>
+
+      {actionBar && !inPip ? (
+        <View style={styles.actionBar}>
+          {canPlayback ? <Button label="Recordings" icon="history" hasTVPreferredFocus onPress={openRecordings} /> : null}
+          {ptz.supported ? (
+            <Button
+              label="Move camera (PTZ)"
+              icon="arrow-all"
+              hasTVPreferredFocus={!canPlayback}
+              onPress={() => {
+                setActionBar(false);
+                setPtzMode(true);
+              }}
+            />
+          ) : null}
+          <Button label="Close" icon="close" variant="ghost" onPress={() => setActionBar(false)} />
+        </View>
+      ) : null}
 
       {ptzMode && !isTV && !inPip ? (
         <View style={styles.ptzPad} pointerEvents="box-none">
@@ -360,7 +397,7 @@ export default function CameraScreen() {
                   ? 'PTZ · hold arrows to move the camera · CH+/CH− lens zoom · OK/BACK done'
                   : zoom.zoom > 1
                     ? `Zoom ${zoom.zoom}× · arrows move · OK zoom in · BACK zoom out`
-                    : `◀ ▶ switch camera · ▲ zoom${ptz.supported ? ' · ▼ PTZ' : ''} · 1–9 camera · OK sound ${muted ? 'on' : 'off'} · BACK grid`}
+                    : `◀ ▶ switch camera · ▲ zoom${canPlayback || ptz.supported ? ' · ▼ more' : ''} · 1–9 camera · OK sound ${muted ? 'on' : 'off'} · BACK grid`}
               </Text>
             ) : (
               <View style={styles.controls}>
@@ -379,6 +416,7 @@ export default function CameraScreen() {
                   accessibilityLabel="Zoom in"
                 />
                 <Button icon="chevron-right" onPress={() => switchBy(1)} accessibilityLabel="Next camera" />
+                {canPlayback ? <Button icon="history" onPress={openRecordings} accessibilityLabel="Recordings" /> : null}
                 {ptz.supported ? (
                   <Button icon="arrow-all" selected={ptzMode} onPress={() => (ptzMode ? exitPtz() : setPtzMode(true))} accessibilityLabel="Camera control (PTZ)" />
                 ) : null}
@@ -399,6 +437,16 @@ function touchDistance(touches: readonly { pageX: number; pageY: number }[]): nu
 
 const styles = StyleSheet.create({
   ptzPad: { position: 'absolute', right: space.lg, bottom: space.xxl * 2 },
+  actionBar: {
+    position: 'absolute',
+    bottom: space.xxl * 2,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: space.md,
+    padding: space.md,
+    borderRadius: 16,
+    backgroundColor: colors.overlay,
+  },
   zoomBadge: { backgroundColor: colors.overlay, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   zoomText: { color: colors.teal, fontSize: type.label, fontWeight: '800' },
   digits: {
