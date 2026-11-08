@@ -5,13 +5,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PtzPad } from '@/components/PtzPad';
 import { LivePill, StreamOverlay } from '@/components/StreamStatus';
 import { stepIndex } from '@/core/layout';
+import type { PtzCode } from '@/core/dahua';
 import { NO_ZOOM, PAN_STEP, dragPan, panBy, pinchZoom, stepZoom, type ZoomState } from '@/core/zoom';
 import { useAppActive, usePip } from '@/hooks/lifecycle';
 import { useDigitKeys } from '@/hooks/useDigitKeys';
 import { sourceForCamera, useCameras } from '@/hooks/useCameras';
-import { useRemote } from '@/hooks/useRemote';
+import { usePtz } from '@/hooks/usePtz';
+import { useRemote, useRemoteKeys } from '@/hooks/useRemote';
 import { useStream } from '@/hooks/useStream';
 import { useAppStore } from '@/storage/store';
 import { useUiStore } from '@/storage/uiStore';
@@ -57,6 +60,12 @@ export default function CameraScreen() {
   const device = cam ? byDevice.get(cam.deviceId) : undefined;
   const source = cam && warm ? sourceForCamera(device, cam, settings.fullscreenQuality) : null;
   const { state, nativeSource, onStatus, retryNow } = useStream(source, appActive);
+  const ptz = usePtz(device, cam?.channel);
+  const [ptzMode, setPtzMode] = useState(false);
+  const ptzModeRef = useRef(false);
+  useEffect(() => {
+    ptzModeRef.current = ptzMode;
+  }, [ptzMode]);
 
   const poke = useCallback(() => {
     setOverlay(true);
@@ -96,6 +105,7 @@ export default function CameraScreen() {
       setIndex((i) => stepIndex(i, delta, cameras.length));
       setSize(null);
       setZoom(NO_ZOOM);
+      setPtzMode(false);
       poke();
     },
     [cameras.length, poke],
@@ -109,6 +119,15 @@ export default function CameraScreen() {
     poke();
   });
 
+  const exitPtz = useCallback(() => {
+    ptz.stop();
+    setPtzMode(false);
+  }, [ptz]);
+  // Going to the background must never leave the camera moving.
+  useEffect(() => {
+    if (!appActive) ptz.stop();
+  }, [appActive, ptz]);
+
   const changeZoom = useCallback(
     (next: ZoomState) => {
       setZoom(next);
@@ -120,12 +139,16 @@ export default function CameraScreen() {
   // Back while zoomed steps the zoom out instead of leaving the camera.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (ptzModeRef.current) {
+        exitPtz();
+        return true;
+      }
       if (zoomRef.current.zoom <= 1) return false;
       changeZoom(NO_ZOOM);
       return true;
     });
     return () => sub.remove();
-  }, [changeZoom]);
+  }, [changeZoom, exitPtz]);
 
   // Touch: pinch to zoom, drag to pan while zoomed. Taps still reach the Pressable.
   const gesture = useRef<{ start: ZoomState; startDist: number }>({ start: NO_ZOOM, startDist: 0 });
@@ -156,7 +179,30 @@ export default function CameraScreen() {
     poke();
   }, [poke]);
 
+  // PTZ mode: hold an arrow to move the camera, CH+/CH− to zoom the lens; release stops.
+  const PTZ_KEYS: Record<string, PtzCode> = {
+    up: 'Up',
+    down: 'Down',
+    left: 'Left',
+    right: 'Right',
+    channelUp: 'ZoomTele',
+    channelDown: 'ZoomWide',
+  };
+  useRemoteKeys((evt) => {
+    if (!ptzModeRef.current) return;
+    const code = PTZ_KEYS[evt.eventType];
+    if (code) {
+      if (evt.down) ptz.start(code);
+      else ptz.stop();
+    }
+  });
+
   useRemote((evt) => {
+    if (ptzModeRef.current) {
+      if (evt.eventType === 'select' || evt.eventType === 'menu') exitPtz();
+      poke();
+      return;
+    }
     // Zoomed: arrows pan the picture.
     if (zoomRef.current.zoom > 1) {
       const pan = { left: [-PAN_STEP, 0], right: [PAN_STEP, 0], up: [0, -PAN_STEP], down: [0, PAN_STEP] } as const;
@@ -188,6 +234,9 @@ export default function CameraScreen() {
         changeZoom(stepZoom(zoomRef.current, 1));
         break;
       case 'down':
+        if (ptz.supported && zoomRef.current.zoom <= 1) setPtzMode(true);
+        poke();
+        break;
       case 'info':
       case 'menu':
         poke();
@@ -207,6 +256,7 @@ export default function CameraScreen() {
   }
 
   const onPress = () => {
+    if (ptzMode) return;
     if (state.phase === 'failed' && state.errorCode !== 'auth') {
       retryNow();
       poke();
@@ -256,6 +306,12 @@ export default function CameraScreen() {
       </Pressable>
       </View>
 
+      {ptzMode && !isTV && !inPip ? (
+        <View style={styles.ptzPad} pointerEvents="box-none">
+          <PtzPad zoom={ptz.caps.zoom} moving={ptz.moving} onStart={ptz.start} onStop={ptz.stop} onClose={exitPtz} />
+        </View>
+      ) : null}
+
       {digits && !inPip ? (
         <View style={styles.digits} pointerEvents="none">
           <Text style={styles.digitsText}>{digits}</Text>
@@ -300,9 +356,11 @@ export default function CameraScreen() {
           >
             {isTV ? (
               <Text style={styles.hint}>
-                {zoom.zoom > 1
-                  ? `Zoom ${zoom.zoom}× · arrows move · OK zoom in · BACK zoom out`
-                  : `◀ ▶ switch camera · ▲ zoom · 1–9 camera · OK sound ${muted ? 'on' : 'off'} · BACK grid`}
+                {ptzMode
+                  ? 'PTZ · hold arrows to move the camera · CH+/CH− lens zoom · OK/BACK done'
+                  : zoom.zoom > 1
+                    ? `Zoom ${zoom.zoom}× · arrows move · OK zoom in · BACK zoom out`
+                    : `◀ ▶ switch camera · ▲ zoom${ptz.supported ? ' · ▼ PTZ' : ''} · 1–9 camera · OK sound ${muted ? 'on' : 'off'} · BACK grid`}
               </Text>
             ) : (
               <View style={styles.controls}>
@@ -321,6 +379,9 @@ export default function CameraScreen() {
                   accessibilityLabel="Zoom in"
                 />
                 <Button icon="chevron-right" onPress={() => switchBy(1)} accessibilityLabel="Next camera" />
+                {ptz.supported ? (
+                  <Button icon="arrow-all" selected={ptzMode} onPress={() => (ptzMode ? exitPtz() : setPtzMode(true))} accessibilityLabel="Camera control (PTZ)" />
+                ) : null}
               </View>
             )}
           </View>
@@ -337,6 +398,7 @@ function touchDistance(touches: readonly { pageX: number; pageY: number }[]): nu
 }
 
 const styles = StyleSheet.create({
+  ptzPad: { position: 'absolute', right: space.lg, bottom: space.xxl * 2 },
   zoomBadge: { backgroundColor: colors.overlay, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   zoomText: { color: colors.teal, fontSize: type.label, fontWeight: '800' },
   digits: {

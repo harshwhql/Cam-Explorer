@@ -88,6 +88,14 @@ function startFakeNvr(opts: FakeOptions = {}) {
       return;
     }
     const body = routes[req.url ?? ''];
+    if (req.url?.startsWith('/cgi-bin/ptz.cgi?')) {
+      const ch = new URL(req.url, 'http://x').searchParams.get('channel');
+      if (ch !== '1') return void res.writeHead(400).end('Error\r\nBad Request!\r\n');
+      if (req.url.includes('getCurrentProtocolCaps')) {
+        return void res.writeHead(200).end('caps.Pan=true\r\ncaps.Tile=true\r\ncaps.Zoom=false\r\n');
+      }
+      return void res.writeHead(200).end('OK\r\n');
+    }
     if (req.url === '/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion') {
       res.writeHead(200, { 'Content-Type': 'text/plain' }).end('channels[0]=1\r\nchannels[1]=3\r\n');
       return;
@@ -223,6 +231,35 @@ describe('snapshots', () => {
   it('rejects invalid channels without a request', async () => {
     const client = new DahuaClient({ host: '127.0.0.1', port: 1, username: USER, password: PASS, fetchImpl: realFetch });
     await expect(client.snapshot(0)).rejects.toMatchObject({ code: 'http' });
+  });
+});
+
+describe('PTZ', () => {
+  it('reads caps (Dahua spells tilt "Tile"), moves and stops', async () => {
+    const nvr = await startFakeNvr();
+    try {
+      const client = new DahuaClient({ host: '127.0.0.1', port: nvr.port, username: USER, password: PASS, fetchImpl: realFetch });
+      expect(await client.ptzCaps(1)).toEqual({ pan: true, tilt: true, zoom: false, presets: false });
+      expect(await client.ptzCaps(2)).toEqual({ pan: false, tilt: false, zoom: false, presets: false });
+      await client.ptzMove(1, 'start', 'Left', 99);
+      await client.ptzMove(1, 'stop', 'Left');
+      await client.ptzPreset(1, 3);
+      const urls = nvr.log.filter((r) => r.auth && r.url.includes('ptz.cgi?action=st')).map((r) => r.url);
+      expect(urls).toEqual([
+        '/cgi-bin/ptz.cgi?action=start&channel=1&code=Left&arg1=0&arg2=8&arg3=0',
+        '/cgi-bin/ptz.cgi?action=stop&channel=1&code=Left&arg1=0&arg2=4&arg3=0',
+        '/cgi-bin/ptz.cgi?action=start&channel=1&code=GotoPreset&arg1=0&arg2=3&arg3=0',
+      ]);
+    } finally {
+      await nvr.close();
+    }
+  });
+
+  it('rejects unsafe commands, channels and presets without a request', async () => {
+    const client = new DahuaClient({ host: '127.0.0.1', port: 1, username: USER, password: PASS, fetchImpl: realFetch });
+    await expect(client.ptzMove(1, 'start', 'Reboot' as never)).rejects.toMatchObject({ code: 'http' });
+    await expect(client.ptzMove(0, 'start', 'Up')).rejects.toMatchObject({ code: 'http' });
+    await expect(client.ptzPreset(1, 0)).rejects.toMatchObject({ code: 'http' });
   });
 });
 

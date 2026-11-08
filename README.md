@@ -15,6 +15,7 @@ Works with **CP Plus / Dahua** recorders and any **RTSP** or **ONVIF** camera on
   on motion while you watch something else
 - Favourites, custom camera order, digital zoom, number-key camera jump, picture-in-picture
 - Optional PIN lock for settings or the whole app, with brute-force protection
+- Pan/tilt/zoom control for PTZ cameras (hold to move, with remote or touch)
 - Finds recorders on the network (ONVIF) and auto-detects channels and camera names
 - Private by design: LAN only, no cloud, no account, no analytics; passwords stored encrypted
   (Android Keystore) and never auto-retried, to avoid recorder account lockouts
@@ -64,6 +65,7 @@ The app shows the full guide under **Settings → Viewing away from home**.
 | Full screen | Sound button | OK | Sound on/off |
 | Full screen | Pinch / drag, zoom buttons | ▲ to zoom, arrows to move, OK zoom more | Digital zoom |
 | Anywhere | — | Number keys | Jump to camera N |
+| Full screen (PTZ camera) | PTZ button, hold arrows | ▼, then hold arrows / CH± | Move / zoom the camera |
 | Full screen | Home | Home | Keep watching in a picture-in-picture window |
 | Anywhere | Back | Back | Go back |
 

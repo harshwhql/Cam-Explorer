@@ -81,6 +81,15 @@ createServer((req, res) => {
     else if (code !== 'VideoLoss') res.writeHead(400).end('Error\r\nBad Request!\r\n');
     if (moving || code !== 'VideoLoss') return;
   }
+  if (req.url?.startsWith('/cgi-bin/ptz.cgi?')) {
+    const ch = new URL(req.url, 'http://x').searchParams.get('channel');
+    if (ch !== '1') return void res.writeHead(400).end('Error\r\nBad Request!\r\n');
+    if (req.url.includes('action=getCurrentProtocolCaps')) {
+      return void res.writeHead(200).end('caps.Pan=true\r\ncaps.Tile=true\r\ncaps.Zoom=true\r\ncaps.Preset=true\r\n');
+    }
+    console.log(`[ptz] ${req.url}`);
+    return void res.writeHead(200).end('OK\r\n');
+  }
   if (req.url?.startsWith('/cgi-bin/snapshot.cgi?channel=')) {
     res.writeHead(200, { 'Content-Type': 'image/jpeg' }).end(FAKE_JPEG);
     return;

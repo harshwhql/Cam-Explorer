@@ -15,6 +15,24 @@ export class DahuaError extends Error {
   }
 }
 
+export const PTZ_CODES = ['Up', 'Down', 'Left', 'Right', 'ZoomTele', 'ZoomWide'] as const;
+export type PtzCode = (typeof PTZ_CODES)[number];
+
+export interface PtzCaps {
+  pan: boolean;
+  tilt: boolean;
+  zoom: boolean;
+  presets: boolean;
+}
+
+export const NO_PTZ: PtzCaps = { pan: false, tilt: false, zoom: false, presets: false };
+
+export const hasPtz = (c: PtzCaps) => c.pan || c.tilt || c.zoom;
+
+function assertChannel(channel: number): void {
+  if (!Number.isInteger(channel) || channel < 1 || channel > 256) throw new DahuaError('http', 'Invalid channel');
+}
+
 /** Event codes that mean "something is moving on this channel". */
 export const MOTION_CODES = ['VideoMotion', 'SmartMotionHuman', 'SmartMotionVehicle'] as const;
 
@@ -131,6 +149,35 @@ export class DahuaClient {
     const all = new Set<number>();
     for (const code of codes) for (const ch of await this.activeEventChannels(code)) all.add(ch);
     return [...all].sort((a, b) => a - b);
+  }
+
+  /** Does this channel's camera support pan/tilt/zoom? (false on any error — never throws for that) */
+  async ptzCaps(channel: number): Promise<PtzCaps> {
+    assertChannel(channel);
+    try {
+      const kv = parseKeyValue(await this.get(`/cgi-bin/ptz.cgi?action=getCurrentProtocolCaps&channel=${channel}`));
+      const yes = (k: string) => /^true$/i.test(kv[`caps.${k}`] ?? '');
+      // Dahua spells "Tilt" as "Tile" in this API.
+      return { pan: yes('Pan'), tilt: yes('Tile') || yes('Tilt'), zoom: yes('Zoom'), presets: yes('Preset') };
+    } catch (e) {
+      if (e instanceof DahuaError && (e.code === 'auth' || e.code === 'insecure_auth')) throw e;
+      return NO_PTZ;
+    }
+  }
+
+  /** Start or stop a continuous PTZ move (speed 1–8). */
+  async ptzMove(channel: number, action: 'start' | 'stop', code: PtzCode, speed = 4): Promise<void> {
+    assertChannel(channel);
+    if (!PTZ_CODES.includes(code)) throw new DahuaError('http', 'Invalid PTZ command');
+    const s = Math.min(8, Math.max(1, Math.round(speed)));
+    await this.get(`/cgi-bin/ptz.cgi?action=${action}&channel=${channel}&code=${code}&arg1=0&arg2=${s}&arg3=0`);
+  }
+
+  /** Move to a saved preset position (1–255). */
+  async ptzPreset(channel: number, preset: number): Promise<void> {
+    assertChannel(channel);
+    if (!Number.isInteger(preset) || preset < 1 || preset > 255) throw new DahuaError('http', 'Invalid preset');
+    await this.get(`/cgi-bin/ptz.cgi?action=start&channel=${channel}&code=GotoPreset&arg1=0&arg2=${preset}&arg3=0`);
   }
 
   /** Current JPEG frame of a channel (1-based) — no video decoder needed to show it. */

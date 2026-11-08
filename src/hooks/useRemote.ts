@@ -12,3 +12,11 @@ export function useRemote(handler: (e: RemoteEvent) => void): void {
     handler({ eventType: evt.eventType });
   });
 }
+
+/** Like useRemote but reports key-down AND key-up (for hold-to-move controls such as PTZ). */
+export function useRemoteKeys(handler: (e: RemoteEvent & { down: boolean }) => void): void {
+  useTVEventHandler((evt) => {
+    if (!evt) return;
+    handler({ eventType: evt.eventType, down: Number(evt.eventKeyAction) !== 1 });
+  });
+}
