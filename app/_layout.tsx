@@ -4,14 +4,16 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { AppState, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { redact } from '@/core/rtsp';
 import { useAppActive } from '@/hooks/lifecycle';
 import { useMotionPopup } from '@/hooks/useMotionPopup';
 import { useMotionWatcher } from '@/hooks/useMotionWatcher';
+import { RELOCK_AFTER_MS } from '@/core/pin';
+import { usePinStore } from '@/storage/pinStore';
 import { useAppStore } from '@/storage/store';
 import { Button } from '@/ui/controls';
 import { colors, space, type } from '@/ui/theme';
@@ -22,7 +24,8 @@ export default function RootLayout() {
   const hydrated = useAppStore((s) => s.hydrated);
   // Icons must be ready before first paint; a font error must never block the app.
   const [fontsLoaded, fontError] = useFonts(MaterialCommunityIcons.font);
-  const ready = hydrated && (fontsLoaded || !!fontError);
+  const pinLoaded = usePinStore((s) => s.loaded);
+  const ready = hydrated && pinLoaded && (fontsLoaded || !!fontError);
   const hydrate = useAppStore((s) => s.hydrate);
   const setOnline = useAppStore((s) => s.setOnline);
   const motionAware = useAppStore((s) => s.settings.motionAware);
@@ -32,7 +35,21 @@ export default function RootLayout() {
 
   useEffect(() => {
     hydrate();
+    usePinStore.getState().load();
   }, [hydrate]);
+
+  // Re-lock (when a PIN is set) after the app has been away for a while.
+  const awaySince = useRef<number | null>(null);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'background') awaySince.current = Date.now();
+      else if (s === 'active' && awaySince.current !== null) {
+        if (Date.now() - awaySince.current > RELOCK_AFTER_MS) usePinStore.getState().lock();
+        awaySince.current = null;
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => undefined);

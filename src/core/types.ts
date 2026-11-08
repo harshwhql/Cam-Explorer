@@ -66,6 +66,8 @@ export interface Settings {
   motionAware: boolean;
   /** Pop the app up (picture-in-picture) on motion while watching something else. */
   motionPopup: boolean;
+  /** With a PIN set: ask for it when the app opens, not only for Settings/Devices. */
+  pinLockApp: boolean;
   /** Camera ids in the user's preferred order. */
   cameraOrder: string[];
   /** Camera ids pinned to the top of the grid. */
@@ -83,6 +85,7 @@ export const DEFAULT_SETTINGS: Settings = {
   stallTimeoutSec: 8,
   motionAware: true,
   motionPopup: false,
+  pinLockApp: false,
   cameraOrder: [],
   favorites: [],
 };

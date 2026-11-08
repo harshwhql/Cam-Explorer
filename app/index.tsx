@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CameraTile } from '@/components/CameraTile';
 import { EmptyState } from '@/components/EmptyState';
+import { PinGate } from '@/components/PinGate';
 import { GRID_LAYOUTS, clampPage, gridShape, pageCount, pageItems, pickLiveIds, snapshotIntervalMs, stepPage } from '@/core/layout';
 import { livePriority, motionOrder, type MotionMap } from '@/core/motion';
 import type { Camera, GridLayout } from '@/core/types';
@@ -24,7 +25,7 @@ const NO_MOTION: MotionMap = {};
 
 const LAYOUT_LABEL: Record<GridLayout, string> = { 1: '1', 4: '2×2', 9: '3×3', 16: '4×4' };
 
-export default function LiveScreen() {
+function LiveScreen() {
   useKeepAwake();
   const { cameras, byDevice } = useCameras();
   const settings = useAppStore((s) => s.settings);
@@ -391,3 +392,12 @@ const styles = StyleSheet.create({
   cellScroll: { flex: 1, aspectRatio: 16 / 9 },
   emptyCell: { backgroundColor: colors.surface, borderRadius: 6, opacity: 0.4 },
 });
+
+/** With "lock the whole app" on, browsing cameras needs the PIN (motion pop-ups still show). */
+export default function LiveScreenGated() {
+  return (
+    <PinGate scope="app">
+      <LiveScreen />
+    </PinGate>
+  );
+}

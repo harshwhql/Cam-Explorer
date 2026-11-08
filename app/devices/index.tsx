@@ -8,6 +8,7 @@ import { useAppStore } from '@/storage/store';
 import { Screen } from '@/ui/Screen';
 import { Banner, Button, ListRow, SectionTitle } from '@/ui/controls';
 import { colors, space, type } from '@/ui/theme';
+import { PinGate } from '@/components/PinGate';
 
 function hostOf(d: Device): string {
   if (d.kind === 'dahua') return d.host;
@@ -26,7 +27,7 @@ function describe(d: Device): { subtitle: string; right: string } {
   return { subtitle: `RTSP · ${hostOf(d)}`, right: '1 camera' };
 }
 
-export default function DevicesScreen() {
+function DevicesScreen() {
   const devices = useAppStore((s) => s.devices);
   const exposed = devices.filter((d) => {
     const h = hostOf(d);
@@ -93,3 +94,12 @@ const styles = StyleSheet.create({
   empty: { color: colors.textDim, fontSize: type.body },
   note: { marginTop: space.lg },
 });
+
+/** Locked behind the app PIN when one is set. */
+export default function DevicesScreenGated() {
+  return (
+    <PinGate scope="settings">
+      <DevicesScreen />
+    </PinGate>
+  );
+}

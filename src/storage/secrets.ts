@@ -52,3 +52,22 @@ export async function deletePassword(deviceId: string): Promise<void> {
 export function clearPasswordCache(): void {
   memory.clear();
 }
+
+// ---- App PIN (Keystore-encrypted like device passwords) ----
+const PIN_KEY = 'camx.app.pin';
+let pinMemory: string | null = null;
+
+export async function savePin(pin: string): Promise<void> {
+  if (!useMemoryOnly) await SecureStore.setItemAsync(PIN_KEY, pin);
+  pinMemory = pin;
+}
+
+export async function loadPin(): Promise<string | null> {
+  if (useMemoryOnly) return pinMemory;
+  return (await SecureStore.getItemAsync(PIN_KEY)) ?? null;
+}
+
+export async function deletePin(): Promise<void> {
+  pinMemory = null;
+  if (!useMemoryOnly) await SecureStore.deleteItemAsync(PIN_KEY);
+}

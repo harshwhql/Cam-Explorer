@@ -96,6 +96,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     stallTimeoutSec: clamp(raw.stallTimeoutSec, 3, 60, DEFAULT_SETTINGS.stallTimeoutSec),
     motionAware: typeof raw.motionAware === 'boolean' ? raw.motionAware : DEFAULT_SETTINGS.motionAware,
     motionPopup: typeof raw.motionPopup === 'boolean' ? raw.motionPopup : DEFAULT_SETTINGS.motionPopup,
+    pinLockApp: typeof raw.pinLockApp === 'boolean' ? raw.pinLockApp : DEFAULT_SETTINGS.pinLockApp,
     cameraOrder: sanitizeIdList(raw.cameraOrder),
     favorites: sanitizeIdList(raw.favorites),
   };

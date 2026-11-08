@@ -8,6 +8,8 @@ import { useAppStore } from '@/storage/store';
 import { Screen } from '@/ui/Screen';
 import { Button, ListRow, SectionTitle, Segmented, Stepper, ToggleRow } from '@/ui/controls';
 import { colors, radius, space, type } from '@/ui/theme';
+import { PinGate } from '@/components/PinGate';
+import { usePinStore } from '@/storage/pinStore';
 import { canPopUp, getDecoderCapabilities, openOverlaySettings, type DecoderInfo } from 'rtsp-player';
 
 function decoderLine(label: string, d: DecoderInfo | null | undefined): string {
@@ -16,12 +18,19 @@ function decoderLine(label: string, d: DecoderInfo | null | undefined): string {
   return `${label}: ${d.hardware ? 'hardware' : 'software'}, ${d.maxInstances} streams${res}`;
 }
 
-export default function SettingsScreen() {
+function SettingsScreen() {
   const settings = useAppStore((s) => s.settings);
   const update = useAppStore((s) => s.updateSettings);
   const resetAll = useAppStore((s) => s.resetAll);
   const caps = useMemo(() => getDecoderCapabilities(), []);
   const [popupAllowed, setPopupAllowed] = useState(canPopUp);
+  const hasPin = usePinStore((s) => s.hasPin);
+  const removePin = usePinStore((s) => s.removePin);
+  const confirmRemovePin = () =>
+    Alert.alert('Remove PIN?', 'Anyone with the remote will be able to change devices and settings.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => removePin() },
+    ]);
 
   const qualityOptions: { value: StreamQuality; label: string }[] = [
     { value: 'sub', label: 'Sub stream (light)' },
@@ -36,6 +45,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await resetAll();
+          await removePin();
           router.dismissAll();
         },
       },
@@ -121,6 +131,29 @@ export default function SettingsScreen() {
         <Text style={styles.cardLine}>{decoderLine('H.265', caps?.h265)}</Text>
       </View>
 
+      <SectionTitle>PIN lock</SectionTitle>
+      {hasPin ? (
+        <>
+          <ToggleRow
+            label="Lock the whole app"
+            description="Ask for the PIN when opening the app, not only for Settings and Devices"
+            value={settings.pinLockApp}
+            onChange={(v) => update({ pinLockApp: v })}
+          />
+          <View style={styles.row}>
+            <Button label="Change PIN" icon="lock-reset" compact onPress={() => router.push('/pin')} />
+            <Button label="Remove PIN" icon="lock-open-variant-outline" compact variant="danger" onPress={confirmRemovePin} />
+          </View>
+        </>
+      ) : (
+        <ListRow
+          title="Set a PIN"
+          subtitle="Stop others changing devices and settings (or opening the app)"
+          icon="lock-outline"
+          onPress={() => router.push('/pin')}
+        />
+      )}
+
       <SectionTitle>Privacy & security</SectionTitle>
       <ListRow
         title="Viewing away from home"
@@ -161,3 +194,12 @@ const styles = StyleSheet.create({
   code: { color: colors.teal, fontSize: type.label, fontFamily: 'monospace', marginVertical: space.xs },
   row: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', marginTop: space.xs },
 });
+
+/** Locked behind the app PIN when one is set. */
+export default function SettingsScreenGated() {
+  return (
+    <PinGate scope="settings">
+      <SettingsScreen />
+    </PinGate>
+  );
+}

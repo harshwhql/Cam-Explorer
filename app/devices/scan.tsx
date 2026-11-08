@@ -7,9 +7,10 @@ import { useAppStore } from '@/storage/store';
 import { Screen } from '@/ui/Screen';
 import { Banner, Button, ListRow, SectionTitle } from '@/ui/controls';
 import { colors, space, type } from '@/ui/theme';
+import { PinGate } from '@/components/PinGate';
 import { discoverOnvif, isNativePlayerAvailable } from 'rtsp-player';
 
-export default function ScanScreen() {
+function ScanScreen() {
   const devices = useAppStore((s) => s.devices);
   const [found, setFound] = useState<DiscoveredDevice[]>([]);
   const [scanning, setScanning] = useState(true);
@@ -88,3 +89,12 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, flexWrap: 'wrap' },
   tip: { color: colors.textDim, fontSize: type.body, lineHeight: 22 },
 });
+
+/** Locked behind the app PIN when one is set. */
+export default function ScanScreenGated() {
+  return (
+    <PinGate scope="settings">
+      <ScanScreen />
+    </PinGate>
+  );
+}

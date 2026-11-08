@@ -6,9 +6,10 @@ import { useAppStore } from '@/storage/store';
 import { Screen } from '@/ui/Screen';
 import { Button } from '@/ui/controls';
 import { colors, radius, space, type } from '@/ui/theme';
+import { PinGate } from '@/components/PinGate';
 
 /** Favourites (pinned first, and first in line for live video) + custom camera order. */
-export default function ArrangeCamerasScreen() {
+function ArrangeCamerasScreen() {
   const { cameras } = useCameras();
   const favorites = useAppStore((s) => s.settings.favorites);
   const update = useAppStore((s) => s.updateSettings);
@@ -75,3 +76,12 @@ const styles = StyleSheet.create({
   sub: { color: colors.textDim, fontSize: type.label },
   empty: { color: colors.textDim, fontSize: type.body },
 });
+
+/** Locked behind the app PIN when one is set. */
+export default function ArrangeCamerasScreenGated() {
+  return (
+    <PinGate scope="settings">
+      <ArrangeCamerasScreen />
+    </PinGate>
+  );
+}

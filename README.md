@@ -14,6 +14,7 @@ Works with **CP Plus / Dahua** recorders and any **RTSP** or **ONVIF** camera on
 - Motion aware: cameras with motion are highlighted and get live video first; optional pop-up window
   on motion while you watch something else
 - Favourites, custom camera order, digital zoom, number-key camera jump, picture-in-picture
+- Optional PIN lock for settings or the whole app, with brute-force protection
 - Finds recorders on the network (ONVIF) and auto-detects channels and camera names
 - Private by design: LAN only, no cloud, no account, no analytics; passwords stored encrypted
   (Android Keystore) and never auto-retried, to avoid recorder account lockouts

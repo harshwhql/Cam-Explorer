@@ -21,6 +21,7 @@ import { useAppStore } from '@/storage/store';
 import { Screen } from '@/ui/Screen';
 import { Banner, Button, SectionTitle, Segmented, Stepper, TextField, ToggleRow } from '@/ui/controls';
 import { colors, radius, space, type } from '@/ui/theme';
+import { PinGate } from '@/components/PinGate';
 import { RtspPlayerView } from 'rtsp-player';
 
 type Kind = Device['kind'];
@@ -42,7 +43,7 @@ function defaultChannels(
   });
 }
 
-export default function EditDeviceScreen() {
+function EditDeviceScreen() {
   const params = useLocalSearchParams<{ id?: string; kind?: string; host?: string; httpPort?: string; name?: string }>();
   const devices = useAppStore((s) => s.devices);
   const saveDevice = useAppStore((s) => s.saveDevice);
@@ -412,3 +413,12 @@ const styles = StyleSheet.create({
   },
   footer: { marginTop: space.lg },
 });
+
+/** Locked behind the app PIN when one is set. */
+export default function EditDeviceScreenGated() {
+  return (
+    <PinGate scope="settings">
+      <EditDeviceScreen />
+    </PinGate>
+  );
+}
