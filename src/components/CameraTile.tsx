@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { Camera, Device, StreamQuality } from '@/core/types';
 import { sourceForCamera } from '@/hooks/useCameras';
 import { useStream } from '@/hooks/useStream';
+import { Icon } from '@/ui/controls';
 import { Focusable } from '@/ui/Focusable';
 import { colors, fill, radius, type } from '@/ui/theme';
 import { RtspPlayerView } from 'rtsp-player';
@@ -29,6 +30,8 @@ export interface CameraTileProps {
    */
   mode?: 'live' | 'snapshot';
   snapshotIntervalMs?: number;
+  /** Recorder reports motion on this camera right now. */
+  motion?: boolean;
 }
 
 function CameraTileImpl({
@@ -45,6 +48,7 @@ function CameraTileImpl({
   onFocusTile,
   mode = 'live',
   snapshotIntervalMs,
+  motion = false,
 }: CameraTileProps) {
   const live = mode === 'live';
   const source = live ? sourceForCamera(device, camera, quality) : null;
@@ -96,7 +100,15 @@ function CameraTileImpl({
             </View>
           )}
           <View style={styles.topRow} pointerEvents="none">
-            <Text style={styles.number}>{number}</Text>
+            <View style={styles.topLeft}>
+              <Text style={styles.number}>{number}</Text>
+              {motion ? (
+                <View style={styles.motionPill}>
+                  <Icon name="motion-sensor" size={11} color={colors.bg} />
+                  <Text style={styles.motionText}>MOTION</Text>
+                </View>
+              ) : null}
+            </View>
             {live ? <LivePill state={state} /> : device?.kind === 'dahua' ? <SnapshotPill /> : null}
           </View>
           {showLabel ? (
@@ -106,7 +118,7 @@ function CameraTileImpl({
               </Text>
             </View>
           ) : null}
-          <View pointerEvents="none" style={[styles.ring, focused && styles.ringFocused]} />
+          <View pointerEvents="none" style={[styles.ring, motion && styles.ringMotion, focused && styles.ringFocused]} />
         </>
       )}
     </Focusable>
@@ -129,6 +141,18 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   ringFocused: { borderWidth: 3, borderColor: colors.focus },
+  ringMotion: { borderWidth: 3, borderColor: colors.warn },
+  topLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  motionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.warn,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  motionText: { color: colors.bg, fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
   idle: { ...fill, alignItems: 'center', justifyContent: 'center' },
   idleText: { color: colors.textDim, fontSize: type.label },
   topRow: {

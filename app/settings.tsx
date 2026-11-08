@@ -60,6 +60,14 @@ export default function SettingsScreen() {
         onChange={(v) => update({ stallTimeoutSec: v })}
       />
 
+      <SectionTitle>Motion</SectionTitle>
+      <ToggleRow
+        label="Motion awareness"
+        description="Highlight cameras when the recorder detects motion and give them live video first"
+        value={settings.motionAware}
+        onChange={(v) => update({ motionAware: v })}
+      />
+
       <SectionTitle>Tour</SectionTitle>
       <ToggleRow
         label="Tour mode"

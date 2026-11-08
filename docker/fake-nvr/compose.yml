@@ -26,4 +26,5 @@ services:
       - "8080:8080"
     volumes:
       - ./dahua-http.mjs:/app/dahua-http.mjs:ro
+      - ./snapshot.jpg:/app/snapshot.jpg:ro
     mem_limit: 128m

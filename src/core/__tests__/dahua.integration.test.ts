@@ -88,6 +88,18 @@ function startFakeNvr(opts: FakeOptions = {}) {
       return;
     }
     const body = routes[req.url ?? ''];
+    if (req.url === '/cgi-bin/eventManager.cgi?action=getEventIndexes&code=VideoMotion') {
+      res.writeHead(200, { 'Content-Type': 'text/plain' }).end('channels[0]=1\r\nchannels[1]=3\r\n');
+      return;
+    }
+    if (req.url === '/cgi-bin/eventManager.cgi?action=getEventIndexes&code=SmartMotionHuman') {
+      res.writeHead(200, { 'Content-Type': 'text/plain' }).end('channels[0]=1\r\n');
+      return;
+    }
+    if (req.url?.startsWith('/cgi-bin/eventManager.cgi?action=getEventIndexes&code=') && body === undefined) {
+      res.writeHead(400).end('Error\r\nBad Request!\r\n'); // nothing active / unsupported
+      return;
+    }
     if (req.url?.startsWith('/cgi-bin/snapshot.cgi?channel=')) {
       res.writeHead(200, { 'Content-Type': 'image/jpeg' }).end(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 0xff, 0xd9]));
       return;
@@ -211,6 +223,35 @@ describe('snapshots', () => {
   it('rejects invalid channels without a request', async () => {
     const client = new DahuaClient({ host: '127.0.0.1', port: 1, username: USER, password: PASS, fetchImpl: realFetch });
     await expect(client.snapshot(0)).rejects.toMatchObject({ code: 'http' });
+  });
+});
+
+describe('motion events', () => {
+  it('merges motion + smart motion channels; 400 "Error" counts as none', async () => {
+    const nvr = await startFakeNvr();
+    try {
+      const client = new DahuaClient({ host: '127.0.0.1', port: nvr.port, username: USER, password: PASS, fetchImpl: realFetch });
+      expect(await client.motionChannels()).toEqual([2, 4]);
+      expect(await client.activeEventChannels('CrossLineDetection')).toEqual([]);
+    } finally {
+      await nvr.close();
+    }
+  });
+
+  it('a wrong password throws (so the watcher stops) after one login attempt', async () => {
+    const nvr = await startFakeNvr();
+    try {
+      const client = new DahuaClient({ host: '127.0.0.1', port: nvr.port, username: USER, password: 'bad', fetchImpl: realFetch });
+      await expect(client.motionChannels()).rejects.toMatchObject({ code: 'auth' });
+      expect(nvr.log.filter((r) => r.auth).length).toBe(1);
+    } finally {
+      await nvr.close();
+    }
+  });
+
+  it('rejects unsafe event codes', async () => {
+    const client = new DahuaClient({ host: '127.0.0.1', port: 1, username: USER, password: PASS, fetchImpl: realFetch });
+    await expect(client.activeEventChannels('x&action=reboot')).rejects.toMatchObject({ code: 'http' });
   });
 });
 

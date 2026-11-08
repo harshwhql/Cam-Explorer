@@ -9,6 +9,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { redact } from '@/core/rtsp';
+import { useAppActive } from '@/hooks/lifecycle';
+import { useMotionWatcher } from '@/hooks/useMotionWatcher';
 import { useAppStore } from '@/storage/store';
 import { Button } from '@/ui/controls';
 import { colors, space, type } from '@/ui/theme';
@@ -22,6 +24,9 @@ export default function RootLayout() {
   const ready = hydrated && (fontsLoaded || !!fontError);
   const hydrate = useAppStore((s) => s.hydrate);
   const setOnline = useAppStore((s) => s.setOnline);
+  const motionAware = useAppStore((s) => s.settings.motionAware);
+  const appActive = useAppActive();
+  useMotionWatcher(hydrated && appActive && motionAware);
 
   useEffect(() => {
     hydrate();

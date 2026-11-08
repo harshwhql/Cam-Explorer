@@ -7,15 +7,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraTile } from '@/components/CameraTile';
 import { EmptyState } from '@/components/EmptyState';
 import { GRID_LAYOUTS, clampPage, gridShape, pageCount, pageItems, pickLiveIds, snapshotIntervalMs, stepPage } from '@/core/layout';
+import { livePriority, motionOrder, type MotionMap } from '@/core/motion';
 import type { Camera, GridLayout } from '@/core/types';
 import { useAppActive, useNow, useScreenFocused } from '@/hooks/lifecycle';
 import { useCameras } from '@/hooks/useCameras';
 import { useRemote } from '@/hooks/useRemote';
 import { useDecoderBudget } from '@/hooks/useDecoderBudget';
+import { useMotionStore } from '@/storage/motionStore';
 import { useAppStore } from '@/storage/store';
 import { useUiStore } from '@/storage/uiStore';
 import { Button, Icon } from '@/ui/controls';
 import { colors, isTV, space, type } from '@/ui/theme';
+
+const NO_MOTION: MotionMap = {};
 
 const LAYOUT_LABEL: Record<GridLayout, string> = { 1: '1', 4: '2×2', 9: '3×3', 16: '4×4' };
 
@@ -47,13 +51,23 @@ export default function LiveScreen() {
   const page = hintIdx >= 0 ? Math.floor(hintIdx / perPage) : clampPage(settings.page, cameras.length, perPage);
   const pageCams = useMemo(() => pageItems(cameras, page, perPage), [cameras, page, perPage]);
 
-  // Hardware decoders are scarce on TVs (often only 2): the most recently highlighted
-  // tiles stream live video, the rest refresh as snapshots.
+  // Hardware decoders are scarce on TVs (often only 2): the tile you're on and cameras with
+  // motion stream live video, the rest refresh as snapshots.
   const [recentFocus, setRecentFocus] = useState<string[]>([]);
+  const liveMotion = useMotionStore((s) => s.motion);
+  const motion = settings.motionAware ? liveMotion : NO_MOTION;
   const liveIds = useMemo(
-    () => pickLiveIds(pageCams.map((c) => c.id), recentFocus, budget),
-    [pageCams, recentFocus, budget],
+    () => pickLiveIds(pageCams.map((c) => c.id), livePriority(recentFocus, motion), budget),
+    [pageCams, recentFocus, motion, budget],
   );
+  // Motion on cameras that are not on this page → offer a jump.
+  const offPageMotion = useMemo(() => {
+    const onPage = new Set(pageCams.map((c) => c.id));
+    return motionOrder(motion)
+      .filter((id) => !onPage.has(id))
+      .map((id) => cameras.find((c) => c.id === id))
+      .filter((c): c is Camera => !!c);
+  }, [motion, pageCams, cameras]);
   const snapshotEvery = snapshotIntervalMs(pageCams.length - liveIds.size);
 
   // ---- focus bookkeeping (TV) ----
@@ -82,6 +96,18 @@ export default function LiveScreen() {
       updateSettings({ page: next });
     },
     [pages, page, cameras, perPage, updateSettings],
+  );
+
+  const jumpTo = useCallback(
+    (cam: Camera) => {
+      const idx = cameras.findIndex((c) => c.id === cam.id);
+      if (idx < 0) return;
+      useUiStore.getState().setLastViewed(null);
+      setPreferredIdx(idx % perPage);
+      setRecentFocus((m) => [cam.id, ...m.filter((x) => x !== cam.id)].slice(0, 16));
+      updateSettings({ page: Math.floor(idx / perPage) });
+    },
+    [cameras, perPage, updateSettings],
   );
 
   useRemote((evt) => {
@@ -160,6 +186,20 @@ export default function LiveScreen() {
           focusIdx.current = -1;
         }}
       />
+      {offPageMotion.length ? (
+        <View style={styles.motionBar}>
+          <Button
+            icon="motion-sensor"
+            compact
+            label={`Motion: ${offPageMotion.map((c) => c.name).slice(0, 3).join(', ')}${offPageMotion.length > 3 ? '…' : ''} — show`}
+            onPress={() => jumpTo(offPageMotion[0]!)}
+            onFocus={() => {
+              focusIdx.current = -1;
+            }}
+            accessibilityLabel="Show camera with motion"
+          />
+        </View>
+      ) : null}
       {!online ? (
         <View style={styles.offline}>
           <Icon name="wifi-off" size={16} color={colors.warn} />
@@ -186,6 +226,7 @@ export default function LiveScreen() {
                     onOpen={openCamera}
                     onFix={fixCamera}
                     mode={liveIds.has(cam.id) ? 'live' : 'snapshot'}
+                    motion={!!motion[cam.id]}
                     snapshotIntervalMs={snapshotEvery}
                     onFocusTile={() => {
                       focusIdx.current = idx;
@@ -306,6 +347,7 @@ const styles = StyleSheet.create({
   barRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   sep: { width: 1, height: 22, backgroundColor: colors.border, marginHorizontal: space.sm },
   clock: { color: colors.textDim, fontSize: type.label, fontWeight: '600', marginLeft: space.md, minWidth: 48 },
+  motionBar: { flexDirection: 'row', marginHorizontal: isTV ? 28 : space.sm, marginBottom: GAP },
   offline: {
     flexDirection: 'row',
     alignItems: 'center',

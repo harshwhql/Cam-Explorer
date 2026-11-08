@@ -62,6 +62,8 @@ export interface Settings {
   tourEnabled: boolean;
   tourIntervalSec: number;
   stallTimeoutSec: number;
+  /** Highlight cameras with motion and give them the live video decoders first. */
+  motionAware: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -73,4 +75,5 @@ export const DEFAULT_SETTINGS: Settings = {
   tourEnabled: false,
   tourIntervalSec: 15,
   stallTimeoutSec: 8,
+  motionAware: true,
 };

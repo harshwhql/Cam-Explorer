@@ -1,6 +1,7 @@
 // Minimal fake CP Plus / Dahua HTTP API with real Digest auth (TEST-ONLY credentials).
 // Lets the app's "Test & detect cameras" flow be exercised end to end on a TV/phone.
 import { createHash, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
 const USER = process.env.NVR_USER ?? 'admin';
@@ -9,6 +10,7 @@ const REALM = 'Login to FAKECPPLUS0001';
 const CHANNELS = Number(process.env.NVR_CHANNELS ?? 4);
 const PORT = Number(process.env.PORT ?? 8080);
 const MAX_FAILS = 5;
+const FAKE_JPEG = readFileSync(new URL('./snapshot.jpg', import.meta.url));
 
 const md5 = (s) => createHash('md5').update(s).digest('hex');
 const nonces = new Set();
@@ -70,6 +72,19 @@ createServer((req, res) => {
     return;
   }
   failures = 0;
+  // Simulated motion: channel 2 moves for 10 s out of every 30 s. Like real firmware, a
+  // getEventIndexes query with nothing active answers 400 "Error".
+  if (req.url?.startsWith('/cgi-bin/eventManager.cgi?action=getEventIndexes&code=')) {
+    const code = req.url.split('code=')[1];
+    const moving = code === 'VideoMotion' && Math.floor(Date.now() / 1000) % 30 < 10;
+    if (moving) res.writeHead(200, { 'Content-Type': 'text/plain' }).end('channels[0]=1\r\n');
+    else if (code !== 'VideoLoss') res.writeHead(400).end('Error\r\nBad Request!\r\n');
+    if (moving || code !== 'VideoLoss') return;
+  }
+  if (req.url?.startsWith('/cgi-bin/snapshot.cgi?channel=')) {
+    res.writeHead(200, { 'Content-Type': 'image/jpeg' }).end(FAKE_JPEG);
+    return;
+  }
   const body = routes[req.url];
   console.log(`[ok] ${req.url}`);
   if (body === undefined) res.writeHead(404).end('Error\r\nBad Request!\r\n');

@@ -15,6 +15,9 @@ export class DahuaError extends Error {
   }
 }
 
+/** Event codes that mean "something is moving on this channel". */
+export const MOTION_CODES = ['VideoMotion', 'SmartMotionHuman', 'SmartMotionVehicle'] as const;
+
 export interface DahuaClientOptions {
   host: string;
   port: number;
@@ -106,6 +109,28 @@ export class DahuaClient {
   /** GET a CGI path as bytes (e.g. JPEG snapshots). */
   async getBytes(path: string): Promise<ArrayBuffer> {
     return (await this.fetchAuthed(path)).arrayBuffer();
+  }
+
+  /**
+   * 1-based channels where `code` (e.g. VideoMotion) is active right now. Firmware answers
+   * HTTP 400 "Error" both when nothing is active and when the code is unsupported → [].
+   * Login failures still throw, so callers can stop polling (recorder lockout).
+   */
+  async activeEventChannels(code: string): Promise<number[]> {
+    if (!/^[A-Za-z]{1,40}$/.test(code)) throw new DahuaError('http', 'Invalid event code');
+    try {
+      return parseEventChannels(await this.get(`/cgi-bin/eventManager.cgi?action=getEventIndexes&code=${code}`));
+    } catch (e) {
+      if (e instanceof DahuaError && (e.code === 'http' || e.code === 'not_dahua')) return [];
+      throw e;
+    }
+  }
+
+  /** Channels with motion now: classic motion detection plus smart (human/vehicle) motion. */
+  async motionChannels(codes: readonly string[] = MOTION_CODES): Promise<number[]> {
+    const all = new Set<number>();
+    for (const code of codes) for (const ch of await this.activeEventChannels(code)) all.add(ch);
+    return [...all].sort((a, b) => a - b);
   }
 
   /** Current JPEG frame of a channel (1-based) — no video decoder needed to show it. */

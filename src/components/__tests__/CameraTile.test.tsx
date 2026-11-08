@@ -203,3 +203,12 @@ describe('CameraTile connection count', () => {
     expect(lastProps().source!.reloadKey).toBe(key0);
   });
 });
+
+describe('CameraTile motion', () => {
+  it('shows a MOTION badge when the recorder reports motion', async () => {
+    await render(
+      <CameraTile camera={camera} device={device} quality="sub" active showLabel number={1} stallTimeoutMs={8000} onOpen={jest.fn()} motion />,
+    );
+    expect(screen.getByText('MOTION')).toBeTruthy();
+  });
+});

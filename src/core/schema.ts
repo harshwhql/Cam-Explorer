@@ -93,6 +93,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     tourEnabled: typeof raw.tourEnabled === 'boolean' ? raw.tourEnabled : DEFAULT_SETTINGS.tourEnabled,
     tourIntervalSec: clamp(raw.tourIntervalSec, 5, 300, DEFAULT_SETTINGS.tourIntervalSec),
     stallTimeoutSec: clamp(raw.stallTimeoutSec, 3, 60, DEFAULT_SETTINGS.stallTimeoutSec),
+    motionAware: typeof raw.motionAware === 'boolean' ? raw.motionAware : DEFAULT_SETTINGS.motionAware,
   };
 }
 
