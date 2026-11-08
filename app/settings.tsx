@@ -122,6 +122,12 @@ export default function SettingsScreen() {
       </View>
 
       <SectionTitle>Privacy & security</SectionTitle>
+      <ListRow
+        title="Viewing away from home"
+        subtitle="Watch safely through a VPN — never open router ports"
+        icon="earth"
+        onPress={() => router.push('/remote-access')}
+      />
       <View style={styles.card}>
         <Text style={styles.cardLine}>• Works only on your local network. No cloud, no account, no analytics.</Text>
         <Text style={styles.cardLine}>• Passwords are encrypted with the Android Keystore and never shown or logged.</Text>

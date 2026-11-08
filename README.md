@@ -11,6 +11,9 @@ Works with **CP Plus / Dahua** recorders and any **RTSP** or **ONVIF** camera on
 - Self-healing streams: auto-reconnect, frozen-stream detection, network recovery
 - Adapts to each device's hardware: tiles beyond its video-decoder limit refresh as snapshots,
   and the selected tile always plays live
+- Motion aware: cameras with motion are highlighted and get live video first; optional pop-up window
+  on motion while you watch something else
+- Favourites, custom camera order, digital zoom, number-key camera jump, picture-in-picture
 - Finds recorders on the network (ONVIF) and auto-detects channels and camera names
 - Private by design: LAN only, no cloud, no account, no analytics; passwords stored encrypted
   (Android Keystore) and never auto-retried, to avoid recorder account lockouts
@@ -44,6 +47,12 @@ npm run fake-nvr     # fake CP Plus/Dahua recorder in Docker
 Add a *CP Plus / Dahua* device with your computer's IP, RTSP port `8554`, HTTP port `8080`,
 user `admin`, password `test1234`.
 
+## Viewing away from home
+
+Don't forward recorder ports to the internet. Put a VPN such as Tailscale (subnet routing) or WireGuard on an
+always-on device at home, connect your phone to it, and keep using the recorder's home IP in the app.
+The app shows the full guide under **Settings → Viewing away from home**.
+
 ## Controls
 
 | Where | Touch | TV remote | Action |
@@ -52,6 +61,9 @@ user `admin`, password `test1234`.
 | Grid | ‹ › in the top bar | CH+ / CH− | Next / previous page |
 | Full screen | ‹ › buttons | ◀ ▶ | Previous / next camera |
 | Full screen | Sound button | OK | Sound on/off |
+| Full screen | Pinch / drag, zoom buttons | ▲ to zoom, arrows to move, OK zoom more | Digital zoom |
+| Anywhere | — | Number keys | Jump to camera N |
+| Full screen | Home | Home | Keep watching in a picture-in-picture window |
 | Anywhere | Back | Back | Go back |
 
 ## License
